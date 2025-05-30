@@ -23,7 +23,7 @@ https://dpandl.github.io/kindergarten-dienstplan-app/
 
 ## About the Development
 
-This application was developed 100% with the support of Gemini Canvas and input from dPandl.
+This application was developed 100% with the support of Gemini Canvas and input from me (Gemini did all the work though).
 
 ## License
 
