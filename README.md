@@ -19,7 +19,7 @@ To use the Kindergarten Duty Roster App, simply open the following link in your 
 
 https://dpandl.github.io/kindergarten-dienstplan-app/
 
--No installation or registration is required.
+- No installation or registration is required.
 
 ## About the Development
 
