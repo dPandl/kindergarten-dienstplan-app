@@ -3,7 +3,8 @@
 This application is a free and easy-to-use duty roster program specifically developed for kindergartens. All data is stored locally in your browser, ensuring maximum privacy and independence. No installation is required, and there are no costs whatsoever.
 
 Please note: The app itself is currently only available in German.
-Features
+
+### Features
 
 - Simple Duty Roster Creation: Create and manage duty rosters for your kindergarten team.
 
