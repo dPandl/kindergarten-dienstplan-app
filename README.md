@@ -1,12 +1,32 @@
-# React + Vite
+# Kindergarten Dienstplan App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This application is a free and easy-to-use duty roster program specifically developed for kindergartens. All data is stored locally in your browser, ensuring maximum privacy and independence. No installation is required, and there are no costs whatsoever.
 
-Currently, two official plugins are available:
+Please note: The app itself is currently only available in German.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Features
 
-## Expanding the ESLint configuration
+- Simple Duty Roster Creation: Create and manage duty rosters for your kindergarten team.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Local Data Storage: All your data remains securely on your device and is not sent to external servers.
+
+- 100% Free: No hidden fees, subscriptions, or in-app purchases.
+
+- User-Friendly Interface: Intuitive design for quick familiarization.
+
+## How to Open the App
+
+To use the Kindergarten Duty Roster App, simply open the following link in your web browser:
+
+https://dpandl.github.io/kindergarten-dienstplan-app/
+
+- No installation or registration is required.
+
+## About the Development
+
+This application was developed 100% with the support of Gemini Canvas and input from me (Gemini did all the work though).
+
+## License
+
+This app is completely free and open source. You are welcome to use, share, and adapt it as you wish.
+GitHub Repository

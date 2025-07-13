@@ -70,3 +70,400 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* --- Allgemeine Grid-Definition für den Wochenplan (Standardansicht) --- */
+/* Diese Definition muss mit der Änderung in App.jsx übereinstimmen */
+.weekly-plan-grid {
+  grid-template-columns: auto minmax(80px, max-content) 1fr 150px; /* Standard: 1fr für Zeitleiste, 150px für Zusammenfassung */
+}
+
+/* Animated gradient background (only for screen, not print) */
+.animated-gradient {
+  background: linear-gradient(135deg, #fbcfe8, #e9d5ff, #bfdbfe); /* pink-200, purple-200, blue-200 */
+  background-size: 400% 400%; /* Smaller for a more noticeable shift */
+  animation: gradientShift 15s ease infinite; /* Animation name, duration, timing, loop */
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+/* Ensure the placeholder text does not get a text cursor */
+.print-hidden-placeholder {
+  cursor: default !important;
+}
+
+/* Styles for the popup menu that appears on click */
+.popup-menu {
+  position: absolute;
+  z-index: 50; /* Stellt sicher, dass das Menü über anderen Elementen liegt */
+  background-color: white; /* Hintergrundfarbe für das Menü */
+  border: 1px solid #e5e7eb; /* Grauer Rand */
+  border-radius: 0.5rem; /* Abgerundete Ecken */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Schatten */
+  padding: 0.5rem; /* Innenabstand */
+}
+
+/* This class is important for positioning the popup menu relative to its parent */
+.add-shift-button-container {
+  position: relative;
+}
+
+
+/* --- Druckstile --- */
+@media print {
+  /* Allgemeine Druckanpassungen für HTML und Body */
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important; /* Höhe automatisch anpassen */
+    min-height: auto !important; /* Mindesthöhe entfernen */
+    overflow: visible !important; /* Sehr wichtig: Keine Scrollbalken im Druck */
+    -webkit-print-color-adjust: exact; /* Stellt sicher, dass Hintergrundfarben gedruckt werden */
+    print-color-adjust: exact; /* Standardeigenschaft */
+    background-color: white !important; /* Sicherstellen, dass der Hintergrund des Dokuments weiß ist */
+  }
+
+  /* Den äußersten Container der App anpassen */
+  .w-screen.min-h-screen {
+    width: 100% !important;
+    min-height: auto !important;
+    overflow: visible !important; /* Überwichtig: Auch hier Scrollbalken entfernen */
+    padding: 0 !important; /* Padding entfernen */
+    margin: 0 !important; /* Margin entfernen */
+    box-shadow: none !important; /* Schatten entfernen */
+    background-color: transparent !important; /* Hintergrund entfernen, um App-Hintergrund durchscheinen zu lassen */
+  }
+  /* Removed .animated-gradient styling for print (already handled by not applying it to print) */
+  .main-container {
+    box-shadow: none !important; /* Remove shadow for print */
+    border-radius: 0 !important; /* Remove border-radius for print */
+    padding: 0 !important; /* Remove padding for print */
+    max-width: none !important; /* Allow full width for print */
+    width: 100vw !important; /* Ensure full viewport width for print */
+    margin: 0 !important; /* Remove margin, as it's typically centered with mx-auto */
+    background-color: white !important; /* Ensure white background for print */
+  }
+
+  /* Elemente ausblenden, die nicht für den Druck benötigt werden */
+  .header,
+  .footer,
+  .navigation,
+  .sidebar,
+  .management-sections-container, /* Container für alle Verwaltungsbereiche */
+  .display-time-config, /* Zeitbereichs- und Filter-Einstellungen */
+  .weekly-plan-title-edit-button, /* Bearbeiten-Button für den Titel */
+  .print-hidden-modal, /* Alle Modals, einschließlich des Druckoptions-Modals */
+  .add-shift-button, /* Schicht hinzufügen Button */
+  .message-alert, /* Nachrichten-/Warnbanner */
+  .feedback-button, /* Feedback-Button */
+  .data-management-buttons-container, /* Export/Import/Drucken/Löschen-Buttons */
+  .group-filter-select, /* Gruppenfilter */
+  .warning-tooltip, /* Warn-Tooltip (falls noch vorhanden und nicht durch print-hidden-element abgedeckt) */
+  .print-hidden-element, /* Zusätzliche Elemente, die Sie manuell mit dieser Klasse versehen haben */
+  .print-hidden-warning, /* Warnungen, die nur auf dem Bildschirm sichtbar sein sollen */
+  .popup-menu, /* Hide all popup menus during print */
+  .print-hidden-placeholder /* "Klicken zum Hinzufügen" Text */
+   {
+    display: none !important;
+  }
+
+  /* NEU: Spezifische Regeln zum Ausblenden der Warnungen */
+
+  /* 1. Roter Hintergrund (Betreuungswarnungen in der Zeitleiste) */
+  .timeline-row-container div[class*="bg-red-"][class*="opacity-"] {
+      background-color: transparent !important;
+      opacity: 0 !important;
+      box-shadow: none !important;
+      border: none !important;
+  }
+
+  /* 2. Rot gestrichelte Linie (Pause machen müssen) */
+  .timeline-row-container div[style*="border-left: 2px dashed red"] { /* Targeting the inline style for specificity */
+    display: none !important;
+  }
+
+  /* 3. Symbol mit dem roten Ausrufezeichen (AlertCircle) - if it were present, this would hide it */
+  .summary-cell .absolute.bottom-1.right-1.cursor-pointer {
+    display: none !important;
+  }
+
+  /* 4. Rot hinterlegte Zellen in der Wochenzusammenfassung (Über-/Unterstunden) */
+  .weekly-summary-section td.bg-red-500 {
+      background-color: transparent !important;
+      color: #000 !important;
+      border-color: #ccc !important;
+  }
+  .weekly-summary-section td.bg-red-500 * {
+      visibility: visible !important;
+  }
+
+
+  /* Hide the main title (Kindergarten Dienstplan App) */
+  h1 {
+    display: none !important;
+  }
+
+  /* Ensure the weekly plan title (h2) is visible */
+  .master-weekly-plan-section h2 {
+    display: block !important;
+    font-size: 20pt !important; /* Adjust font size for print */
+    margin-bottom: 0mm !important; /* Add some space below title */
+    color: #374151 !important; /* Ensure readable color */
+    text-align: center !important; /* Center the title */
+  }
+
+  /* Show only the main weekly plan and its title */
+  .master-weekly-plan-section {
+    display: block !important;
+    padding: 0 !important; /* Remove padding for print */
+    box-shadow: none !important; /* Remove shadow for print */
+    border-radius: 0 !important; /* Remove border-radius for print */
+    margin: 0 !important; /* Keep margin: 0 for consistent layout */
+    width: 100% !important;
+    background: none !important; /* Remove background for print */
+  }
+
+  /* Weekly Summary Section: Hidden by default, shown if print-with-summary class is on body */
+  .weekly-summary-section {
+    display: none !important;
+  }
+  body.print-with-summary .weekly-summary-section {
+    display: block !important;
+    padding: 0 !important; /* Remove padding for print */
+    box-shadow: none !important; /* Remove shadow for print */
+    border-radius: 0 !important; /* Remove border-radius for print */
+    margin-top: 5mm !important; /* Reduced space between plan and summary */
+    width: 100% !important;
+  }
+
+  /* New: Group Warnings Section - now hidden for print as they are integrated into daily summary */
+  .group-warnings-section {
+    display: none !important;
+  }
+
+  /* Remove space between weekdays */
+  .weekly-plan-days-container {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border: none !important; /* Remove border from container */
+    box-shadow: none !important; /* Remove shadow from container */
+    background-color: transparent !important; /* Remove background from container */
+  }
+  /* Target direct children of weekly-plan-days-container to remove space-y-6 effect */
+  .weekly-plan-days-container > div {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Ensure content within daily plan is not broken across pages if possible */
+  /* Ensure employee rows are not broken across pages */
+  .contents { /* This is the div with display: contents for each employee row */
+    page-break-inside: avoid;
+  }
+
+  /* New: Ensure entire weekday is not broken across pages */
+  .printable-day-container {
+    page-break-inside: avoid;
+  }
+
+  /* Adjust font sizes for better readability on print and "zoomed out" effect */
+  h2 {
+    font-size: 18pt !important; /* Even smaller */
+    margin-bottom: 0mm !important; /* Reduced margin */
+  }
+  h3 {
+    font-size: 9pt !important;
+  }
+  /* Adjusted weekday headings (h4) for print */
+  .weekly-plan-grid h4 {
+    font-size: 9pt !important; /* Increased font size for weekday headings */
+    text-align: center !important; /* Centered weekday headings */
+    margin-top: 2mm !important; /* Adjusted margin */
+    margin-bottom: 0mm !important; /* Adjusted margin */
+    padding-left: 0 !important; /* Removed padding */
+  }
+
+  .timeline-row-container {
+    height: auto !important; /* Allow height to be determined by content */
+    min-height: 8mm !important; /* Reduced by 20% from 8mm (8 * 0.8 = 6.4) */
+    padding-top: 0.5px !important; /* Minimal padding */
+    padding-bottom: 0.5px !important; /* Minimal padding */
+    padding-left: 0 !important; /* Padding entfernen */
+    padding-right: 0 !important; /* Padding entfernen */
+    border-color: #e5e7eb !important;
+    background-color: white !important;
+    width: 100% !important; /* Füllt die 1fr-Spalte aus */
+    box-sizing: border-box !important; /* Korrekte Breitenberechnung */
+    border-left: none !important; /* Linken Rand entfernen */
+    border-right: none !important; /* Rechten Rand entfernen */
+    border-radius: 0 !important; /* Abgerundete Ecken entfernen */
+  }
+
+  .time-label-header div[class*="border-l"],
+  .timeline-row-container div[class*="border-l"] {
+    border-color: #e5e7eb !important; /* Hellt die vertikalen Linien auf */
+    opacity: 1 !important; /* Stellt sicher, dass die Opazität nicht zu stark reduziert wird */
+  }
+
+  .group-name-vertical {
+    min-width: 6mm !important; /* Even narrower */
+    font-size: 5pt !important; /* Smaller font */
+    padding: 0.02rem !important; /* Reduced padding */
+  }
+  .employee-name-cell {
+    font-size: 5pt !important; /* Smaller font */
+    padding: 0.05rem 0.2rem !important; /* Reduced padding */
+    min-width: 25px !important; /* Adjusted min-width */
+  }
+  .summary-cell {
+    font-size: 4pt !important; /* Smallest font for summary */
+    padding-left: 1mm !important; /* Adjusted padding */
+    padding-right: 1mm !important; /* Adjusted padding */
+    gap: 0mm !important; /* Increased gap */
+    border-color: #ccc !important;
+    justify-content: flex-start !important; /* Changed to flex-end */
+    width: 100% !important; /* Fills the fixed column width */
+    min-width: 0 !important; /* Set min-width to 0 */
+    max-width: 100% !important; /* Ensure it takes full width */
+    box-sizing: border-box !important; /* Important for correct width calculation */
+    display: flex !important; /* Important: makes it a flex container */
+    flex-direction: row !important; /* Elements side-by-side */
+    align-items: center !important; /* Vertically center */
+    flex-wrap: nowrap !important; /* Prevent wrapping */
+  }
+  .summary-cell > div { /* Target the individual summary blocks (Gesamt, Pause, categories) */
+    width: 25px !important; /* Adjusted width */
+    height: 25px !important; /* Increased height for better readability of rotated text */
+    font-size: 6pt !important; /* Increased font size */
+    padding: 0.5px !important; /* Added padding */
+    line-height: 1 !important;
+    overflow: hidden !important; /* Important: clip content */
+    text-overflow: clip !important; /* Clip text */
+    white-space: nowrap !important; /* No text wrapping */
+    flex-shrink: 0 !important; /* Prevent blocks from shrinking below their defined width */
+    flex-grow: 0 !important; /* Prevent blocks from growing */
+    margin-left: 1px !important; /* Minimal spacing between blocks */
+    margin-right: 1px !important; /* Minimal spacing between blocks */
+    transform: rotate(0deg) !important;
+    writing-mode: initial !important; /* Reset writing mode */
+    text-orientation: initial !important; /* Reset text orientation */
+  }
+  /* Spezifische Farben für die Zusammenfassungsblöcke beibehalten, aber Text schwarz machen */
+  .summary-cell .bg-blue-500,
+  .summary-cell .bg-gray-500,
+  .summary-cell .bg-green-500,
+  .summary-cell .bg-purple-500,
+  .summary-cell .bg-orange-500,
+  .summary-cell .bg-amber-500,
+  .summary-cell .bg-yellow-500,
+  .summary-cell .bg-lime-500,
+  .summary-cell .bg-emerald-500,
+  .summary-cell .bg-teal-500,
+  .summary-cell .bg-cyan-500,
+  .summary-cell .bg-sky-500,
+  .summary-cell .bg-indigo-500,
+  .summary-cell .bg-violet-500,
+  .summary-cell .bg-fuchsia-500,
+  .summary-cell .bg-pink-500,
+  .summary-cell .bg-rose-500,
+  .summary-cell .bg-slate-500,
+  .summary-cell .bg-neutral-500 {
+    color: white !important;
+  }
+
+
+  .shift-block {
+    min-width: 1.5mm !important; /* Mindestbreite für Schichtblöcke */
+    /* border-color: #aaa !important; <-- DIESE ZEILE WURDE ENTFERNT */
+  }
+  .shift-block span, .shift-block div {
+    font-size: 0.6rem !important; /* Angepasst: proportional kleiner */
+    line-height: 1 !important;
+    padding: 0 !important;
+  }
+
+  /* Zeit-Labels (6:00, 7:00, ...) */
+  .time-label-header span {
+    font-size: 7.2pt !important; /* Kleiner */
+    top: 0 !important;
+    transform: translateX(-50%) !important;
+    color: #000 !important;
+  }
+  .time-label-header {
+    padding-bottom: 0.5mm !important; /* Reduziert */
+    margin-bottom: 0.5mm !important; /* Reduziert */
+    height: 10pt !important; /* Angepasst */
+    line-height: 1 !important;
+  }
+
+  /* Wochenübersichtstabelle */
+  .weekly-summary-section table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    margin-top: 5mm !important;
+  }
+  .weekly-summary-section th,
+  .weekly-summary-section td {
+    border: 1px solid #ccc !important;
+    padding: 1px !important; /* Stellen Sie sicher, dass dies auf 0 gesetzt ist */
+    padding-left: 10px !important;
+    font-size: 7pt !important;
+    line-height: 2 !important; /* Fügen Sie diese Zeile hinzu oder ändern Sie sie */
+  }
+  .weekly-summary-section thead th {
+    /* background-color: #eee !important; */
+    /* color: #000 !important; */
+  }
+  /* Farben für die Header der Wochenübersicht beibehalten */
+  .weekly-summary-section .bg-blue-500,
+  .weekly-summary-section .bg-red-500,
+  .weekly-summary-section .bg-green-500,
+  .weekly-summary-section .bg-purple-500,
+  .weekly-summary-section .bg-orange-500,
+  .weekly-summary-section .bg-amber-500,
+  .weekly-summary-section .bg-yellow-500,
+  .weekly-summary-section .bg-lime-500,
+  .weekly-summary-section .bg-emerald-500,
+  .weekly-summary-section .bg-teal-500,
+  .weekly-summary-section .bg-cyan-500,
+  .weekly-summary-section .bg-sky-500,
+  .weekly-summary-section .bg-indigo-500,
+  .weekly-summary-section .bg-violet-500,
+  .weekly-summary-section .bg-fuchsia-500,
+  .weekly-summary-section .bg-pink-500,
+  .weekly-summary-section .bg-rose-500,
+  .weekly-summary-section .bg-gray-500,
+  .weekly-summary-section .bg-slate-500,
+  .weekly-summary-section .bg-neutral-500 {
+    color: white !important;
+  }
+  .weekly-summary-section .bg-gray-100 {
+    /* background-color: #f3f4f6 !important; */
+    /* color: #000 !important; */
+  }
+  /* Warnungen in der Wochenübersicht */
+
+  /* Adjust grid columns for print */
+  .weekly-plan-grid {
+    display: grid !important;
+    /* Spalten: Gruppenname (vertikal), Mitarbeitername, Zeitleiste (nimmt restlichen Platz), Zusammenfassung (feste Breite) */
+    grid-template-columns: auto auto 1fr 100px !important; /* Feste Breite von 220px für die Zusammenfassungsspalte */
+    width: 100% !important; /* Das gesamte Raster erstreckt sich über die volle Breite */
+    overflow: visible !important;
+    margin: 0 !important; /* Kein Auto-Margin, da es 100% Breite hat */
+    gap: 0 !important; /* Explizit keinen Spaltenabstand */
+  }
+}
