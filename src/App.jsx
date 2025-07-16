@@ -477,12 +477,14 @@ const ColorPickerDropdown = ({ selectedColor, onColorChange, colors, placeholder
   );
 };
 
-// --- Custom Confirmation Modal Component ---
+// --- Confirm Modal Component ---
 const ConfirmModal = ({ message, onConfirm, onCancel }) => {
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4 print-hidden-modal">
+    // NEU: z-[100] hinzugefügt, um sicherzustellen, dass es über anderen Modals liegt
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-[100] p-4">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full transform transition-all duration-300 scale-100">
-        <p className="text-lg font-semibold text-gray-800 mb-6 text-center">{message}</p>
+        <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">Bestätigung</h3>
+        <p className="text-gray-700 mb-6 text-center">{message}</p>
         <div className="flex justify-center gap-4">
           <button
             onClick={onConfirm}
@@ -503,7 +505,21 @@ const ConfirmModal = ({ message, onConfirm, onCancel }) => {
 };
 
 // --- Print Options Modal Component ---
-const PrintOptionsModal = ({ onPrint, onCancel, defaultPrintWeeklySummary, onPrintWeeklySummaryChange }) => {
+const PrintOptionsModal = ({
+  onPrint,
+  onCancel,
+  defaultPrintWeeklySummary,
+  onPrintWeeklySummaryChange,
+  selectedGroupIdFilter,
+  setSelectedGroupIdFilter,
+  groups, // Diese Prop wird weiterhin benötigt, um die Namen der Gruppen anzuzeigen
+  hasEmployeesWithoutGroup,
+  selectedEmployeeIdFilter,
+  setSelectedEmployeeIdFilter,
+  availableEmployeesForFilter,
+  // NEUE PROP:
+  filteredGroupsForDisplayInFilter // Die gefilterte Liste der Gruppen für das Dropdown
+}) => {
   const [printWeeklySummary, setPrintWeeklySummary] = useState(defaultPrintWeeklySummary);
 
   const handlePrintClick = () => {
@@ -514,10 +530,51 @@ const PrintOptionsModal = ({ onPrint, onCancel, defaultPrintWeeklySummary, onPri
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4 print-hidden-modal">
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full transform transition-all duration-300 scale-100">
         <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">Druckoptionen</h3>
+
+        {/* Hinweis entfernt, da die Funktionalität jetzt vorhanden ist */}
+        {/*
         <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 mb-4" role="alert">
           <p className="font-bold">Hinweis:</p>
-          <p>Druckoption noch nicht final. Wähle im Wochenplan über den Filter aus welche Gruppe du drucken möchtest.</p>
+          <p>Druckoption noch nicht final. Experimentiere mit der Skalierung im Druckenfenster herum um mehr/weniger Seiten zu verwenden.</p>
         </div>
+        */}
+
+        {/* Gruppenfilter (bestehend) */}
+        <div className="mb-4">
+          <label htmlFor="printGroupFilter" className="block text-sm font-medium text-gray-700 mb-1">
+            Gruppe filtern:
+          </label>
+          <select
+            id="printGroupFilter"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+            value={selectedGroupIdFilter}
+            onChange={(e) => setSelectedGroupIdFilter(e.target.value)}
+          >
+            {/* Verwenden Sie die neue gefilterte Liste für die Optionen */}
+            {filteredGroupsForDisplayInFilter.map(group => (
+              <option key={group.id} value={group.id}>{group.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* NEU: Mitarbeiterfilter im Druckmodal */}
+        <div className="mb-4">
+          <label htmlFor="printEmployeeFilter" className="block text-sm font-medium text-gray-700 mb-1">
+            Mitarbeiter filtern:
+          </label>
+          <select
+            id="printEmployeeFilter"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+            value={selectedEmployeeIdFilter} // Bindet an den übergebenen Mitarbeiterfilter-State
+            onChange={(e) => setSelectedEmployeeIdFilter(e.target.value)} // Aktualisiert den Mitarbeiterfilter-State
+          >
+            <option value="all">Alle Mitarbeiter</option>
+            {availableEmployeesForFilter.map(employee => (
+              <option key={employee.id} value={employee.id}>{employee.name}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="flex items-center mb-6">
           <input
             type="checkbox"
@@ -525,7 +582,7 @@ const PrintOptionsModal = ({ onPrint, onCancel, defaultPrintWeeklySummary, onPri
             checked={printWeeklySummary}
             onChange={(e) => {
               setPrintWeeklySummary(e.target.checked);
-              onPrintWeeklySummaryChange(e.target.checked); // Update parent state immediately
+              onPrintWeeklySummaryChange(e.target.checked);
             }}
             className="form-checkbox h-5 w-5 text-blue-600 rounded"
           />
@@ -550,15 +607,81 @@ const PrintOptionsModal = ({ onPrint, onCancel, defaultPrintWeeklySummary, onPri
   );
 };
 
+// --- NEUE: Schedule Management Modal Component ---
+const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSchedule, onCancel, fileInputRef }) => {
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4 print-hidden-modal">
+      <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full transform transition-all duration-300 scale-100">
+        <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">Wochenplan verwalten</h3>
+
+        <div className="flex flex-col gap-4">
+          <button
+            onClick={onExportSchedule}
+            className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out"
+          >
+            Wochenplan exportieren (JSON)
+          </button>
+
+          <input
+            type="file"
+            ref={fileInputRef} // Hier den Ref übergeben
+            onChange={onImportSchedule}
+            accept=".json"
+            className="hidden"
+            id="importScheduleFileModal" // Eindeutige ID für dieses Modal
+          />
+          <label
+            htmlFor="importScheduleFileModal"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out cursor-pointer"
+          >
+            Wochenplan importieren (JSON)
+          </label>
+
+          <button
+            onClick={onClearSchedule}
+            className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out"
+          >
+            Wochenplan löschen
+          </button>
+        </div>
+
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={onCancel}
+            className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg shadow-md transition duration-300 ease-in-out"
+          >
+            Abbrechen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 // --- Release Notes Data ---
 export const RELEASE_NOTES = [
+    {
+    version: "1.0.5 (Beta)",
+    whatsNew: [
+      "Es kann nun nach einzelnen Mitarbeitern gefiltert werden.",
+      "Gruppen und Mitarbeiter können nun direkt in den Druckoptionen gefiltert werden.",
+      "Wochenpläne können nun exportiert, importiert und gelöscht werden ohne dass andere Daten davon betroffen sind (muss noch ausgiebig getestet werden).",
+    ],
+    bugFixes: [
+      "Das Icon für die Arbeitszeitwarnung wird nun vertikal mittig in der Reihe dargestellt."
+    ],
+    adjustments: [
+      "Der Bearbeiten-Button für den Wochenplan-Titel wurde grafisch angepasst."
+    ]
+  },
   {
     version: "1.0.4 (Beta)",
     whatsNew: [
       "Die erste funktionierende Druckenfunktion wurde implementiert.",
     ],
     bugFixes: [
-      "Pausenwarnungen werden nun wieder angezeigt."
+      "Arbeitszeitwarnungen werden nun wieder angezeigt."
     ],
     adjustments: []
   },
@@ -940,7 +1063,7 @@ function App() {
   // IMPORTANT: Update this version string whenever you release a new version
   // for which you want to show the "What's New" popup.
   // Use a semantic versioning scheme (major.minor.patch) for easy comparison.
-  const CURRENT_APP_VERSION = "1.0.4 (Beta)"; // Updated version string
+  const CURRENT_APP_VERSION = "1.0.5 (Beta)"; // Updated version string
 
   const [message, setMessage] = useState('');
 
@@ -1030,6 +1153,9 @@ function App() {
   // New state for selected group filter
   const [selectedGroupIdFilter, setSelectedGroupIdFilter] = useState('all'); // 'all' means all groups
 
+  // NEU: State für Mitarbeiterfilter
+  const [selectedEmployeeIdFilter, setSelectedEmployeeIdFilter] = useState('all'); // 'all' means all employees
+
 
   // Derived display time calculations
   const displayStartMinutes = (displayStartHour * 60) + displayStartMinute;
@@ -1082,8 +1208,14 @@ function App() {
   // State for dynamic cursor on shift blocks
   const [currentShiftBlockCursor, setCurrentShiftBlockCursor] = useState('grab');
 
+  // NEU: State für das Wochenplan-Verwaltungsmodal
+  const [showScheduleManagementModal, setShowScheduleManagementModal] = useState(false);
+
   // Ref for the file input element (for import)
   const fileInputRef = useRef(null);
+
+  // NEU: Separater Ref für Wochenplan-Import-Dateieingabe
+  const fileInputScheduleRef = useRef(null);
 
   // Drag and Drop refs for groups
   const draggedGroupIdRef = useRef(null);
@@ -1097,6 +1229,70 @@ function App() {
   // --- Print Options States ---
   const [showPrintOptionsModal, setShowPrintOptionsModal] = useState(false);
   const [printWeeklySummary, setPrintWeeklySummary] = useState(true); // Default to print weekly summary
+
+  // Dieser Hook berechnet, ob es Mitarbeiter ohne groupId gibt.
+  // Er wird nur neu berechnet, wenn sich die 'employees'-Liste ändert.
+  const hasEmployeesWithoutGroup = useMemo(() => {
+    return employees.some(emp => !emp.groupId);
+  }, [employees]); // Abhängigkeit von 'employees'
+
+ // NEU: useMemo für die Liste der Mitarbeiter für den Filter
+  const availableEmployeesForFilter = useMemo(() => {
+    let employeesToFilter = employees;
+
+
+    // Wenn ein Gruppenfilter ausgewählt ist (außer "Alle Gruppen"),
+    // filtern Sie die Mitarbeiter nach dieser Gruppe.
+    if (selectedGroupIdFilter !== 'all') {
+      employeesToFilter = employees.filter(employee =>
+        (selectedGroupIdFilter === 'no-group' && !employee.groupId) ||
+        (employee.groupId === selectedGroupIdFilter)
+      );
+    }
+
+    // Sortiert die gefilterten Mitarbeiter nach Namen
+    return [...employeesToFilter].sort((a, b) => a.name.localeCompare(b.name));
+  }, [employees, selectedGroupIdFilter]); // Abhängigkeiten aktualisiert: selectedGroupIdFilter hinzugefügt
+
+  // NEU: useMemo für die Liste der Gruppen, die im Gruppenfilter angezeigt werden sollen
+  // DIESER BLOCK MUSS DIREKT UNTER ANDEREN TOP-LEVEL USEMEMOS/USESTATES STEHEN!
+  const filteredGroupsForDisplayInFilter = useMemo(() => {
+    let groupsToShow = [{ id: 'all', name: 'Alle Gruppen' }]; // Start always with "Alle Gruppen"
+
+    if (selectedEmployeeIdFilter !== 'all') {
+      // Wenn ein spezifischer Mitarbeiter ausgewählt ist, zeigen Sie nur dessen Gruppe an
+      const selectedEmployee = employees.find(emp => emp.id === selectedEmployeeIdFilter);
+      if (selectedEmployee) {
+        if (selectedEmployee.groupId) {
+          const employeeGroup = groups.find(g => g.id === selectedEmployee.groupId);
+          if (employeeGroup) {
+            groupsToShow.push(employeeGroup);
+          }
+        } else {
+          // Mitarbeiter hat keine Gruppe, fügen Sie "Ohne Gruppe" hinzu
+          groupsToShow.push({ id: 'no-group', name: 'Ohne Gruppe' });
+        }
+      }
+    } else {
+      // Wenn "Alle Mitarbeiter" ausgewählt ist, zeigen Sie alle Gruppen an
+      groups.forEach(group => groupsToShow.push(group));
+      // Fügen Sie "Ohne Gruppe" hinzu, wenn es Mitarbeiter ohne Gruppe gibt
+      if (hasEmployeesWithoutGroup) {
+        groupsToShow.push({ id: 'no-group', name: 'Ohne Gruppe' });
+      }
+    }
+
+    // Sortieren Sie die Gruppen nach Namen (außer "Alle Gruppen" und "Ohne Gruppe" am Ende)
+    const sortedUserGroups = groupsToShow.filter(g => g.id !== 'all' && g.id !== 'no-group').sort((a, b) => a.name.localeCompare(b.name));
+    const ohneGruppeOption = groupsToShow.find(g => g.id === 'no-group');
+
+    return [
+      groupsToShow.find(g => g.id === 'all'), // "Alle Gruppen" immer zuerst
+      ...sortedUserGroups,
+      ...(ohneGruppeOption ? [ohneGruppeOption] : []) // "Ohne Gruppe" immer zuletzt, falls vorhanden
+    ].filter(Boolean); // Entfernt mögliche null/undefined Einträge
+  }, [employees, groups, selectedEmployeeIdFilter, hasEmployeesWithoutGroup]); // Abhängigkeiten aktualisiert
+
 
   // Ref for the main container to calculate relative positions
   const mainContainerRef = useRef(null);
@@ -1199,11 +1395,27 @@ function App() {
 
   // Filtered employees based on selectedGroupIdFilter
   const filteredEmployeesForDisplay = useMemo(() => {
-    if (selectedGroupIdFilter === 'all') {
-      return sortedEmployees;
+    // Starten Sie mit den bereits sortierten Mitarbeitern
+    let currentFilteredEmployees = sortedEmployees;
+
+    // Filter nach Gruppe (bestehende Logik)
+    if (selectedGroupIdFilter !== 'all') {
+      currentFilteredEmployees = currentFilteredEmployees.filter(emp =>
+        (selectedGroupIdFilter === 'no-group' && !emp.groupId) ||
+        (emp.groupId === selectedGroupIdFilter)
+      );
     }
-    return sortedEmployees.filter(emp => (emp.groupId || 'no-group') === selectedGroupIdFilter);
-  }, [sortedEmployees, selectedGroupIdFilter]);
+
+    // NEU: Filter nach Mitarbeiter
+    if (selectedEmployeeIdFilter !== 'all') {
+      currentFilteredEmployees = currentFilteredEmployees.filter(emp =>
+        emp.id === selectedEmployeeIdFilter
+      );
+    }
+
+    return currentFilteredEmployees;
+  }, [sortedEmployees, selectedGroupIdFilter, selectedEmployeeIdFilter]); // Abhängigkeiten aktualisiert
+
 
 
   // Get unique group objects in sorted order for rendering group headers
@@ -2826,6 +3038,136 @@ function App() {
     setShowConfirmModal(true);
   };
 
+  // NEU: Funktion zum Löschen nur des Wochenplans
+  const handleClearSchedule = useCallback(() => {
+    setConfirmModalMessage('Möchten Sie WIRKLICH nur den Wochenplan löschen? Mitarbeiter, Gruppen und Kategorien bleiben erhalten.');
+    setConfirmModalAction(() => () => {
+      // Setzt den Wochenplan auf den initialen leeren Zustand zurück
+      const defaultSchedule = { shifts: [], displayStartTime: '06:00', displayEndTime: '18:00', title: 'Wochenplan' };
+      setMasterSchedule(defaultSchedule);
+      setDisplayStartHour(6);
+      setDisplayStartMinute(0);
+      setDisplayEndHour(18);
+      setDisplayEndMinute(0);
+      setWeeklyPlanTitle('Wochenplan');
+
+      // Löscht NUR den Wochenplan aus localStorage
+      localStorage.removeItem('masterSchedule');
+
+      setMessage('Wochenplan erfolgreich gelöscht!');
+      setShowConfirmModal(false);
+      setShowScheduleManagementModal(false); // Modal schließen
+    });
+    setShowConfirmModal(true);
+  }, [setMessage, setMasterSchedule, setDisplayStartHour, setDisplayStartMinute, setDisplayEndHour, setDisplayEndMinute, setWeeklyPlanTitle]);
+
+
+  // NEU: Funktion zum Exportieren nur des Wochenplans
+  const handleExportSchedule = useCallback(() => {
+    try {
+      const dataToExport = {
+        masterSchedule: masterSchedule,
+        // Optional: Fügen Sie hier weitere relevante Daten hinzu, die für den Wochenplan wichtig sind
+      };
+      const jsonString = JSON.stringify(dataToExport, null, 2); // Pretty print JSON
+
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+
+      // Generiere Dateinamen basierend auf weeklyPlanTitle, Datum und Uhrzeit
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+      const year = now.getFullYear();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+
+      // Sanitize the weeklyPlanTitle for filename usage
+      const sanitizedTitle = weeklyPlanTitle
+        .replace(/[^a-zA-Z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/--+/g, '-')
+        .trim();
+
+      const filename = `Wochenplan_${sanitizedTitle}_${day}.${month}.${year}_${hours}.${minutes}.json`;
+      a.download = filename;
+
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url); // Clean up the URL object
+
+      setMessage('Wochenplan erfolgreich exportiert!');
+      setShowScheduleManagementModal(false); // Modal schließen
+    } catch (error) {
+      console.error("Fehler beim Exportieren des Wochenplans:", error);
+      setMessage('Fehler beim Exportieren des Wochenplans.');
+    }
+  }, [masterSchedule, weeklyPlanTitle, setMessage]);
+
+
+  // NEU: Funktion zum Importieren nur des Wochenplans
+  const handleImportSchedule = useCallback((event) => {
+    const file = event.target.files[0];
+    if (!file) {
+      setMessage('Bitte eine Datei zum Importieren auswählen.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedData = JSON.parse(e.target.result);
+
+        // Basic validation for schedule data structure
+        if (!importedData.masterSchedule || !Array.isArray(importedData.masterSchedule.shifts)) {
+          setMessage('Ungültiges Dateiformat. Die importierte Datei scheint kein gültiger Wochenplan-Export zu sein.');
+          if (fileInputScheduleRef.current) { // Use the new ref here
+            fileInputScheduleRef.current.value = '';
+          }
+          return;
+        }
+
+        setConfirmModalMessage('Möchten Sie den aktuellen Wochenplan wirklich durch den importierten Wochenplan ersetzen? Mitarbeiter, Gruppen und Kategorien bleiben erhalten.');
+        setConfirmModalAction(() => () => {
+          // This code runs if the user confirms
+          setMasterSchedule(importedData.masterSchedule);
+
+          // Update display times and title from imported schedule
+          const importedStartTime = importedData.masterSchedule.displayStartTime || '06:00';
+          const importedEndTime = importedData.masterSchedule.displayEndTime || '18:00';
+          setDisplayStartHour(parseInt(importedStartTime.split(':')[0], 10));
+          setDisplayStartMinute(parseInt(importedStartTime.split(':')[1], 10));
+          setDisplayEndHour(parseInt(importedEndTime.split(':')[0], 10));
+          setDisplayEndMinute(parseInt(importedEndTime.split(':')[1], 10));
+          setWeeklyPlanTitle(importedData.masterSchedule.title || 'Wochenplan');
+
+          // Save immediately to localStorage
+          localStorage.setItem('masterSchedule', JSON.stringify(importedData.masterSchedule));
+
+          setMessage('Wochenplan erfolgreich importiert!');
+          setShowConfirmModal(false);
+          setShowScheduleManagementModal(false); // Modal schließen
+          if (fileInputScheduleRef.current) { // Use the new ref here
+            fileInputScheduleRef.current.value = '';
+          }
+        });
+        setShowConfirmModal(true);
+
+      } catch (error) {
+        console.error("Fehler beim Importieren des Wochenplans:", error);
+        setMessage('Fehler beim Importieren des Wochenplans. Stellen Sie sicher, dass es sich um eine gültige JSON-Datei handelt.');
+        if (fileInputScheduleRef.current) { // Use the new ref here
+          fileInputScheduleRef.current.value = '';
+        }
+      }
+    };
+    reader.readAsText(file);
+  }, [setMessage, setMasterSchedule, setDisplayStartHour, setDisplayStartMinute, setDisplayEndHour, setDisplayEndMinute, setWeeklyPlanTitle]);
+
 
   // --- Confirmation Modal Handlers ---
   const handleConfirmModalConfirm = () => {
@@ -3790,60 +4132,85 @@ function App() {
 
           {/* --- Master-Wochenplan-Ansicht --- */}
           <div className="mb-10 p-6 bg-gray-50 rounded-lg shadow-inner master-weekly-plan-section">
-            <h2 className="text-2xl font-bold text-gray-700 mb-6 text-center flex items-center justify-center gap-2">
-              {isEditingWeeklyPlanTitle ? (
-                <input
-                  type="text"
-                  value={weeklyPlanTitle}
-                  onChange={(e) => setWeeklyPlanTitle(e.target.value)}
-                  className="p-2 border border-gray-300 rounded-md text-center text-lg w-full max-w-xs"
-                />
-              ) : (
-                <span>{weeklyPlanTitle}</span>
-              )}
-              {isEditingWeeklyPlanTitle ? (
-                <>
-                  <button
-                    onClick={handleSaveWeeklyPlanTitle}
-                    className="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1 rounded-md shadow-sm weekly-plan-title-edit-button"
-                  >
-                    Speichern
-                  </button>
-                  <button
-                    onClick={handleCancelEditWeeklyPlanTitle}
-                    className="bg-gray-400 hover:bg-gray-500 text-white text-sm px-3 py-1 rounded-md shadow-sm weekly-plan-title-edit-button"
-                  >
-                    Abbrechen
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={handleEditWeeklyPlanTitle}
-                  className="weekly-plan-title-edit-button text-blue-600 hover:text-blue-700 transition duration-200" // Removed bg, padding, rounded, shadow
+            {/* NEU: Flex-Container für Titel-Gruppe und Verwaltungs-Button */}
+            <div className="flex items-center justify-between mb-6">
+              {/* Gruppe für Titel und Bearbeiten-Button (zentriert) */}
+              <div className="flex-grow flex items-center justify-center gap-2">
+                <h2 className="text-2xl font-bold text-gray-700 text-center">
+                  {isEditingWeeklyPlanTitle ? (
+                    <input
+                      type="text"
+                      value={weeklyPlanTitle}
+                      onChange={(e) => setWeeklyPlanTitle(e.target.value)}
+                      className="p-2 border border-gray-300 rounded-md text-center text-lg w-full max-w-xs"
+                    />
+                  ) : (
+                    <span>{weeklyPlanTitle}</span>
+                  )}
+                </h2>
+                {isEditingWeeklyPlanTitle ? (
+                  <>
+                    <button
+                      onClick={handleSaveWeeklyPlanTitle}
+                      className="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1 rounded-md shadow-sm weekly-plan-title-edit-button"
+                    >
+                      Speichern
+                    </button>
+                    <button
+                      onClick={handleCancelEditWeeklyPlanTitle}
+                      className="bg-gray-400 hover:bg-gray-500 text-white text-sm px-3 py-1 rounded-md shadow-sm weekly-plan-title-edit-button"
+                    >
+                      Abbrechen
+                    </button>
+                  </>
+                ) : (
+                  // NEU: Fragment <> um den Bearbeiten-Button, da ein Kommentar davor steht
+                  <>
+                    {/* Bearbeiten-Button */}
+                    <button
+                      onClick={handleEditWeeklyPlanTitle}
+                      className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center shadow-md transition duration-300 ease-in-out transform hover:scale-110 p-0 border-0"
+                      title="Wochenplan-Titel bearbeiten"
+                    >
+                      {/* Inline SVG für das Edit-Icon */}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 384 384"
+                        fill="currentColor"
+                        className="flex-shrink-0"
+                      >
+                        <path d="M0 304L236 68l80 80L80 384H0v-80zM378 86l-39 39l-80-80l39-39q6-6 15-6t15 6l50 50q6 6 6 15t-6 15z"></path>
+                      </svg>
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Wochenplan verwalten Button (rechts ausgerichtet) */}
+              <button
+                onClick={() => setShowScheduleManagementModal(true)}
+                className="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center shadow-md transition duration-300 ease-in-out transform hover:scale-110 p-0 border-0"
+                title="Wochenplan verwalten"
+              >
+                {/* Inline SVG für das FileCog-Icon */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="flex-shrink-0"
                 >
-                  {/* Pencil Icon SVG */}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24" // Increased size for better visibility
-                    height="24" // Increased size
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="lucide lucide-pencil"
-                  >
-                    <path d="M17 3a2.85 2.85 0 0 1 2 2L10 15l-4 4l-1.5-1.5L8.5 12L17 3Z" />
-                    <path d="m15 5l4 4" />
-                  </svg>
-                </button>
-              )}
-            </h2> {/* Corrected from <h2> to </h2> */}
+                  <path d="M6 2c-1.11 0-2 .89-2 2v16a2 2 0 0 0 2 2h6.68a7 7 0 0 1-.68-3a7 7 0 0 1 7-7a7 7 0 0 1 1 .08V8l-6-6H6m7 1.5L18.5 9H13V3.5M18 14a.26.26 0 0 0-.26.21l-.19 1.32c-.3.13-.59.29-.85.47l-1.24-.5c-.11 0-.24 0-.31.13l-1 1.73c-.06.11-.04.24.06.32l1.06.82a4.193 4.193 0 0 0 0 1l-1.06.82a.26.26 0 0 0-.06.32l1 1.73c.06.13.19.13.31.13l1.24-.5c.26.18.54.35.85.47l.19 1.32c.02.12.12.21.26.21h2c.11 0 .22-.09.24-.21l.19-1.32c.3-.13.57-.29.84-.47l1.23.5c.13 0 .26 0 .33-.13l1-1.73a.26.26 0 0 0-.06-.32l-1.07-.82c.02-.17.04-.33.04-.5c0-.17-.01-.33-.04-.5l1.06-.82a.26.26 0 0 0 .06-.32l-1-1.73c-.06-.13-.19-.13-.32-.13l-1.23.5c-.27-.18-.54-.35-.85-.47l-.19-1.32A.236.236 0 0 0 20 14h-2m1 3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5c-.84 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5Z"></path>
+                </svg>
+              </button>
+            </div>
 
             {/* Display Time Range Configuration and Group Filter */}
             <div className="mb-6 p-4 bg-white rounded-lg shadow-sm border border-gray-200 display-time-config">
-              <h3 className="text-lg font-semibold text-gray-700 mb-3">Anzeigebereich der Zeitleiste & Gruppenfilter</h3>
+              <h3 className="text-lg font-semibold text-gray-700 mb-3">Anzeigebereich der Zeitleiste & Filter</h3> {/* Titel angepasst */}
               <div className="flex flex-wrap items-center gap-4">
                 <label className="flex items-center gap-1">
                   Startzeit:
@@ -3890,17 +4257,29 @@ function App() {
                     onChange={(e) => setSelectedGroupIdFilter(e.target.value)}
                     className="p-2 border border-gray-300 rounded-md"
                   >
-                    <option value="all">Alle Gruppen</option>
-                    {groups.map(group => (
+                    {/* Verwenden Sie die neue gefilterte Liste für die Optionen */}
+                    {filteredGroupsForDisplayInFilter.map(group => (
                       <option key={group.id} value={group.id}>{group.name}</option>
                     ))}
-                    {employees.some(emp => !emp.groupId) && (
-                      <option value="no-group">Ohne Gruppe</option>
-                    )}
                   </select>
                 </label>
 
-                {/* New: Global Toggle for Staffing Warnings */}
+                {/* NEU: Employee Filter Select */}
+                <label className="flex items-center gap-1">
+                  Mitarbeiter filtern:
+                  <select
+                    value={selectedEmployeeIdFilter}
+                    onChange={(e) => setSelectedEmployeeIdFilter(e.target.value)}
+                    className="p-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="all">Alle Mitarbeiter</option>
+                    {availableEmployeesForFilter.map(employee => (
+                      <option key={employee.id} value={employee.id}>{employee.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                {/* New: Global Toggle for Staffing Warnings (bestehend) */}
                 <div className="flex items-center gap-2 ml-4">
                   <input
                     type="checkbox"
@@ -4257,28 +4636,29 @@ function App() {
 
                                                     {/* Arbeitszeitgesetz-Warnungen (Icon mit Hover-Tooltip) */}
                                                     {warnings.length > 0 && (
-                                                        <div
-                                                            className="absolute bottom-1 right-1 cursor-pointer z-40" // Positioniert unten rechts in der Zelle
-                                                            onMouseEnter={(e) => {
-                                                                // Lösche eventuelle ausstehende Verstecken-Timeouts
-                                                                if (hideTooltipTimeoutRef.current) {
-                                                                    clearTimeout(hideTooltipTimeoutRef.current);
-                                                                    hideTooltipTimeoutRef.current = null;
-                                                                }
-                                                                setWarningTooltipContent(warnings);
-                                                                setShowWarningTooltip(true);
-                                                                // Setze die Position nur einmal beim Betreten
-                                                                setWarningTooltipPos({ x: e.clientX, y: e.clientY });
-                                                            }}
-                                                            onMouseLeave={() => {
-                                                                // Starte einen Timeout, um den Tooltip zu verstecken, falls die Maus nicht sofort auf den Tooltip geht
-                                                                hideTooltipTimeoutRef.current = setTimeout(() => {
-                                                                    setShowWarningTooltip(false);
-                                                                }, 100); // Kurze Verzögerung von 100ms
-                                                            }}
-                                                        >
-                                                            <AlertCircle className="text-red-600 w-6 h-6" /> {/* Rotes Ausrufezeichen-Icon */}
-                                                        </div>
+                                                      <div
+                                                        // Geändert: top-1/2 und -translate-y-1/2 für vertikale Zentrierung
+                                                        className="absolute top-1/2 -translate-y-1/2 right-1 cursor-pointer z-40" // Positioniert vertikal mittig und rechts in der Zelle
+                                                        onMouseEnter={(e) => {
+                                                          // Lösche eventuelle ausstehende Verstecken-Timeouts
+                                                          if (hideTooltipTimeoutRef.current) {
+                                                            clearTimeout(hideTooltipTimeoutRef.current);
+                                                            hideTooltipTimeoutRef.current = null;
+                                                          }
+                                                          setWarningTooltipContent(warnings);
+                                                          setShowWarningTooltip(true);
+                                                          // Setze die Position nur einmal beim Betreten
+                                                          setWarningTooltipPos({ x: e.clientX, y: e.clientY });
+                                                        }}
+                                                        onMouseLeave={() => {
+                                                          // Starte einen Timeout, um den Tooltip zu verstecken, falls die Maus nicht sofort auf den Tooltip geht
+                                                          hideTooltipTimeoutRef.current = setTimeout(() => {
+                                                            setShowWarningTooltip(false);
+                                                          }, 100); // Kurze Verzögerung von 100ms
+                                                        }}
+                                                      >
+                                                        <AlertCircle className="text-red-600 w-6 h-6" /> {/* Rotes Ausrufezeichen-Icon */}
+                                                      </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -4572,6 +4952,26 @@ function App() {
                 onCancel={handleCancelPrintModal}
                 defaultPrintWeeklySummary={printWeeklySummary}
                 onPrintWeeklySummaryChange={setPrintWeeklySummary}
+                selectedGroupIdFilter={selectedGroupIdFilter}
+                setSelectedGroupIdFilter={setSelectedGroupIdFilter}
+                groups={groups} // Weiterhin benötigt, um die Namen der Gruppen in der PrintOptionsModal zu finden
+                hasEmployeesWithoutGroup={hasEmployeesWithoutGroup}
+                selectedEmployeeIdFilter={selectedEmployeeIdFilter}
+                setSelectedEmployeeIdFilter={setSelectedEmployeeIdFilter}
+                availableEmployeesForFilter={availableEmployeesForFilter}
+                // NEU: Übergabe der gefilterten Gruppenliste für das Dropdown
+                filteredGroupsForDisplayInFilter={filteredGroupsForDisplayInFilter}
+              />
+            )}
+
+            {/* NEU: Render the Schedule Management Modal */}
+            {showScheduleManagementModal && (
+              <ScheduleManagementModal
+                onClearSchedule={handleClearSchedule}
+                onExportSchedule={handleExportSchedule}
+                onImportSchedule={handleImportSchedule}
+                onCancel={() => setShowScheduleManagementModal(false)}
+                fileInputRef={fileInputScheduleRef} // Den Ref für den Import übergeben
               />
             )}
 
