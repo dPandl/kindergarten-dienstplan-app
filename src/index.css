@@ -169,6 +169,7 @@ button:focus-visible {
   .display-time-config, /* Zeitbereichs- und Filter-Einstellungen */
   button[title="Wochenplan-Titel bearbeiten"],
   button[title="Wochenplan verwalten"], /* KORRIGIERT: Verwendet das title-Attribut */
+  button[title="Hilfe & Anleitung"],
   .print-hidden-modal, /* Alle Modals, einschließlich des Druckoptions-Modals */
   .add-shift-button, /* Schicht hinzufügen Button */
   .message-alert, /* Nachrichten-/Warnbanner */

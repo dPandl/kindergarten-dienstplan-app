@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid'; // Import for generating unique IDs
-import { MessageSquare, AlertCircle } from 'lucide-react'; // Import the MessageSquare and AlertCircle icons
+import { MessageSquare, AlertCircle, HelpCircle } from 'lucide-react';
 
 // --- IndexedDB Constants for File Handle Storage ---
 const DB_NAME = 'DienstplanAppDB';
@@ -702,7 +702,7 @@ const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSc
         <div className="flex flex-col gap-4">
           <button
             onClick={onExportSchedule}
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out"
+            className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
           >
             Wochenplan exportieren
           </button>
@@ -717,14 +717,14 @@ const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSc
           />
           <label
             htmlFor="importScheduleFileModal"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out cursor-pointer text-center"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out cursor-pointer text-center"
           >
             Wochenplan importieren
           </label>
 
           <button
             onClick={onClearSchedule}
-            className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out"
+            className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
           >
             Wochenplan löschen
           </button>
@@ -733,7 +733,7 @@ const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSc
         <div className="mt-6 flex justify-center">
           <button
             onClick={onCancel}
-            className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg shadow-md transition duration-300 ease-in-out"
+            className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
           >
             Abbrechen
           </button>
@@ -743,35 +743,231 @@ const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSc
   );
 };
 
+// --- NEUE: Help Modal Component ---
+const HelpModal = ({ onClose }) => {
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100 relative">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 transition hover:scale-110 duration-300 w-8 h-8 rounded-full flex items-center justify-center p-0"
+          aria-label="Schließen"
+        >
+          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
 
+        <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">Anleitung</h3>
+
+        <div className="text-gray-700 space-y-4">
+          <details className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+            <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Kurzanleitung: Erster Dienstplan</summary>
+            <div className="mt-2 text-base">
+              <p className="mb-2">Hier eine schnelle Anleitung, um deinen ersten Dienstplan zu erstellen:</p>
+              {/* NEU: list-outside und angepasstes padding-left für ol/li */}
+              <ol className="list-decimal list-outside pl-5 space-y-1">
+                <li className="pl-1"><strong>Gruppe erstellen:</strong> Gehe zum Bereich "Gruppen verwalten". Erstelle eine neue Gruppe, z.B. "Regenbogenland".</li>
+                <li className="pl-1"><strong>Mitarbeiter hinzufügen:</strong> Gehe zum Bereich "Mitarbeiter verwalten". Gib den Namen und die Wochenstunden ein und klicke auf "Mitarbeiter hinzufügen".</li>
+                <li className="pl-1"><strong>Kategorien erstellen:</strong> Wechsle zu "Kategorien verwalten (Basisblöcke)". Erstelle zum Beispiel eine Kategorie namens "Betreuung" und eine weitere namens "Verfügung". Wähle passende Farben aus.</li>
+                <li className="pl-1"><strong>Schichten im Wochenplan hinzufügen:</strong> Scrolle zum "Wochenplan"-Bereich. Klicke auf eine leere Stelle in der Zeitleiste eines Mitarbeiters. Ein kleines Menü erscheint. Wähle eine der soeben erstellten Kategorien (z.B. "Betreuung"). Der Block wird mit einer Standarddauer von 30 Minuten erstellt.</li>
+                <li className="pl-1"><strong>Schichten anpassen:</strong> Klicke und ziehe die Ränder des Blocks, um seine Dauer zu ändern. Klicke und ziehe den Block selbst, um ihn zu verschieben.</li>
+                <li className="pl-1"><strong>Speichern:</strong> Klicke oben auf den "Speichern"-Button. Deine Daten werden automatisch in der zuletzt geöffneten oder gespeicherten Datei gesichert.</li>
+              </ol>
+              <p className="mt-2">Das war's! Du hast deinen ersten Dienstplan-Eintrag erstellt.</p>
+            </div>
+          </details>
+
+          <details className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+            <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Datenverwaltung</summary>
+            <div className="mt-2 text-base">
+              <p>Verwalte deine Dienstplandateien und sorge für persistente Speicherung:</p>
+              <ul className="list-disc list-outside pl-5 space-y-1">
+                <li className="pl-1"><strong>Datei öffnen (Import):</strong> Lädt einen Dienstplan von deinem Computer in die App.</li>
+                <li className="pl-1"><strong>Speichern:</strong> Speichert Änderungen in der zuletzt geöffneten oder gespeicherten Datei auf deinem Computer.</li>
+                <li className="pl-1"><strong>Speichern unter (Export):</strong> Speichert den aktuellen Dienstplan unter einem neuen Namen an einem beliebigen Ort auf deinem Computer.</li>
+                <li className="pl-1"><strong>Daten vergessen:</strong> Leert die App und entfernt die interne Verknüpfung zur zuletzt verwendeten Datei. Die Datei auf deinem Computer wird dabei <strong>NICHT gelöscht</strong>.</li>
+                <li className="pl-1"><strong>Persistente Speicherung:</strong> Damit deine Daten automatisch geladen werden, wenn du die App erneut öffnest, musst du deinem Browser die Berechtigung zur persistenten Speicherung erteilen. Klicke dafür auf das <strong>Schloss-Symbol</strong> in der Adressleiste deines Browsers (neben der URL). Wähle dort die Option <strong>"Dateien bearbeiten"</strong> aus und stelle sicher, dass <strong>"Bei jedem Besuch erlauben"</strong> aktiviert ist. Dies ist entscheidend, damit die App deine zuletzt verwendete Datei automatisch wiederfindet und lädt. Möglicherweise fragt dich dein Browser beim Speichern oder Importieren von Daten, ob du das Bearbeiten von Dateien zulassen möchtest.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+            <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Gruppen verwalten</summary>
+            <div className="mt-2 text-base">
+              <p>Organisiere deine Mitarbeiter in Gruppen und definiere deren Besonderheiten:</p>
+              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
+              <ul className="list-disc list-outside pl-5 space-y-1">
+                <li className="pl-1"><strong>Gruppe hinzufügen:</strong> Gib einen Namen ein und wähle eine Farbe, die im Wochenplan und bei den Mitarbeitern angezeigt wird.</li>
+                <li className="pl-1"><strong>Öffnungszeiten festlegen:</strong> Für jede Gruppe kannst du die täglichen Öffnungszeiten definieren. Dies ist entscheidend für die <strong>Betreuungswarnungen</strong>. Du kannst mehrere Zeitbereiche pro Tag hinzufügen und Tage aktivieren/deaktivieren.</li>
+                <li className="pl-1"><strong>Min. Betreuungspersonal:</strong> Lege fest, wie viele Mitarbeiter gleichzeitig in der als "Betreuungskategorie" markierten Kategorie anwesend sein müssen.</li>
+                <li className="pl-1"><strong>Betreuungswarnungen:</strong> Du kannst Warnungen für jede Gruppe individuell aktivieren oder deaktivieren.</li>
+                <li className="pl-1"><strong>Reihenfolge ändern:</strong> Ziehe vorhandene Gruppen in der Liste per Drag & Drop, um ihre Anzeigereihenfolge im Wochenplan zu ändern.</li>
+                <li className="pl-1"><strong>Bearbeiten/Löschen:</strong> Bestehende Gruppen können bearbeitet oder gelöscht werden. Eine Gruppe kann <strong>nicht gelöscht</strong> werden, wenn ihr noch Mitarbeiter zugeordnet sind.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+            <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Mitarbeiter verwalten</summary>
+            <div className="mt-2 text-base">
+              <p>Verwalte alle Details deiner Mitarbeiter:</p>
+              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
+              <ul className="list-disc list-outside pl-5 space-y-1">
+                <li className="pl-1"><strong>Name & Wochenstunden:</strong> Gib den Namen des Mitarbeiters und seine vertraglichen Wochenstunden ein.</li>
+                <li className="pl-1"><strong>Verfügungszeit überschreiben:</strong> Hier kannst du eine individuelle Verfügungszeit in Stunden festlegen, die die allgemeinen Verfügungszeit-Regeln überschreibt. Lasse das Feld leer, um die Regeln anzuwenden.</li>
+                <li className="pl-1"><strong>Typ:</strong> Wähle den Mitarbeitertyp: "Normaler Mitarbeiter", "Zusatzkraft", "Auszubildender", "FSJler" oder "Praktikant". Zusatzkräfte werden in Listen zwischen normalen Mitarbeitern und Auszubildenden/FSJlern/Praktikanten sortiert.</li>
+                <li className="pl-1"><strong>Anwesenheitstage:</strong> Für "Auszubildende", "FSJler" und "Praktikanten" kannst du die spezifischen Tage festlegen, an denen sie in der Einrichtung anwesend sind. Schichten an nicht anwesenden Tagen werden im Wochenplan heller dargestellt.</li>
+                <li className="pl-1"><strong>Gruppe zuweisen:</strong> Ordne den Mitarbeiter einer deiner definierten Gruppen zu.</li>
+                <li className="pl-1"><strong>Bearbeiten/Löschen:</strong> Mitarbeiter können bearbeitet oder gelöscht werden. Ein Mitarbeiter kann <strong>nicht gelöscht</strong> werden, wenn ihm noch Schichten im Wochenplan zugeordnet sind.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+            <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Verfügungszeit Regeln</summary>
+            <div className="mt-2 text-base">
+              <p>Definiere Regeln für die automatische Berechnung der Verfügungszeit:</p>
+              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
+              <ul className="list-disc list-outside pl-5 space-y-1">
+                <li className="pl-1"><strong>Soll Arbeitszeit (h):</strong> Gib die vertraglichen Wochenstunden ein.</li>
+                <li className="pl-1"><strong>Verfügungszeit (h):</strong> Gib die entsprechende Verfügungszeit in Stunden ein.</li>
+                <li className="pl-1">Diese Regeln werden auf Mitarbeiter angewendet, für die <strong>keine individuelle Verfügungszeit</strong> unter "Mitarbeiter verwalten" überschrieben wurde.</li>
+                <li className="pl-1">Die Verfügungszeit wird in der Wochenübersicht ausgewiesen.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+            <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Kategorien verwalten (Basisblöcke)</summary>
+            <div className="mt-2 text-base">
+              <p>Erstelle die Hauptkategorien für deine Schichtblöcke im Wochenplan:</p>
+              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
+              <ul className="list-disc list-outside pl-5 space-y-1">
+                <li className="pl-1"><strong>Name & Farbe:</strong> Gib einen Namen (z.B. "Betreuung", "Verfügung", "Elterngespräch") und eine Farbe für die Kategorie an.</li>
+                <li className="pl-1"><strong>Als Verfügungszeit verwenden:</strong> Markiere diese Checkbox, wenn die Stunden dieser Kategorie in die Verfügungszeitberechnung einfließen sollen. Nur eine Kategorie kann so markiert werden.</li>
+                <li className="pl-1"><strong>Als Betreuungskategorie verwenden:</strong> Markiere diese Checkbox, wenn die Stunden dieser Kategorie für die Mindestbesetzungsprüfung der Gruppen relevant sind. Nur eine Kategorie* kann so markiert werden.</li>
+                <li className="pl-1">Die System-Kategorie <strong>"Pause"</strong> ist fest vordefiniert und kann nicht bearbeitet oder gelöscht werden.</li>
+                <li className="pl-1"><strong>Bearbeiten/Löschen:</strong> Bestehende Kategorien können bearbeitet oder gelöscht werden. Eine Kategorie kann <strong>nicht gelöscht</strong> werden, wenn sie in Schichten verwendet wird oder als Oberkategorie für Unterkategorien dient.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+            <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Unterkategorien verwalten (Unterblöcke)</summary>
+            <div className="mt-2 text-base">
+              <p>Erstelle spezifischere Unterkategorien, die zu einer Basis-Kategorie gehören:</p>
+              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
+              <ul className="list-disc list-outside pl-5 space-y-1">
+                <li className="pl-1"><strong>Name:</strong> Gib einen Namen für die Unterkategorie ein (z.B. "Wald" für "Betreuung", "Sprachförderung" für "Verfügung").</li>
+                <li className="pl-1"><strong>Übergeordnete Kategorie:</strong> Wähle eine der Basis-Kategorien (oder "Pause") als übergeordnete Kategorie.</li>
+                <li className="pl-1"><strong>Farbe für Zeitstrahl:</strong> Die Farbe dieser Unterkategorie wird im Wochenplan angezeigt. Wenn keine Farbe gewählt wird, wird die Farbe der übergeordneten Kategorie verwendet.</li>
+                <li className="pl-1"><strong>Bearbeiten/Löschen:</strong> Bestehende Unterkategorien können bearbeitet oder gelöscht werden. Eine Unterkategorie kann <strong>nicht gelöscht</strong> werden, wenn sie in Schichten verwendet wird.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+            <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Wochenplan</summary>
+            <div className="mt-2 text-base">
+              <p>Der zentrale Bereich zur Planung der Schichten deiner Mitarbeiter:</p>
+              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
+              <ul className="list-disc list-outside pl-5 space-y-1">
+                <li className="pl-1"><strong>Anzeigebereich der Zeitleiste:</strong> Passe die Start- und Endzeiten der sichtbaren Zeitleiste an, um den relevanten Zeitraum anzuzeigen.</li>
+                <li className="pl-1"><strong>Gruppe/Mitarbeiter filtern:</strong> Filter die Anzeige nach bestimmten Gruppen oder einzelnen Mitarbeitern, um die Übersicht zu verbessern.</li>
+                <li className="pl-1"><strong>Betreuungswarnungen anzeigen:</strong> Schalte die visuellen Warnungen für die Mindestbesetzung der Gruppen ein oder aus.</li>
+                <li className="pl-1"><strong>Schichtblöcke hinzufügen:</strong> Klicke auf eine leere Stelle in der Zeitleiste eines Mitarbeiters. Ein Menü erscheint, in dem du eine Kategorie und optional eine Unterkategorie auswählen kannst.</li>
+                <li className="pl-1"><strong>Schichtblöcke bearbeiten:</strong> Klicke auf einen bestehenden Block, um ein Optionsmenü zu öffnen. Hier kannst du den Block löschen, die Kategorie ändern oder die Gruppe neu zuweisen.</li>
+                <li className="pl-1"><strong>Schichtblöcke verschieben/Größe ändern:</strong> Ziehe Blöcke per Drag & Drop, um sie in der Zeitleiste zu verschieben. Ziehe an den linken oder rechten Rändern eines Blocks, um seine Dauer anzupassen. Die Blöcke rasten automatisch in 15-Minuten-Intervallen ein. Überlappungen werden verhindert.</li>
+                <li className="pl-1"><strong>Wochenplan-Titel:</strong> Klicke auf den Stift neben dem Wochenplan-Titel, um ihn zu bearbeiten.</li>
+                <li className="pl-1"><strong>Wochenplan verwalten:</strong> Der Button mit dem Zahnrad-Icon öffnet ein Fenster, in dem du den Wochenplan separat exportieren, importieren oder löschen kannst, ohne andere Daten (Mitarbeiter, Gruppen, Kategorien) zu beeinflussen.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+            <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Warnungen</summary>
+            <div className="mt-2 text-base">
+              <p>Die App bietet verschiedene Warnungen, um dir bei der Einhaltung von Arbeitszeitgesetzen und Personalbesetzung zu helfen:</p>
+              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
+              <ul className="list-disc list-outside pl-5 space-y-1">
+                <li className="pl-1"><strong>Arbeitszeitgesetz-Warnungen:</strong> In der Tagesübersicht siehst du rote Ausrufezeichen (<AlertCircle className="inline-block w-5 h-5 text-red-500" />). Fahre mit der Maus darüber, um Details zu sehen, z.B. wenn Pausenregeln oder maximale Arbeitszeiten nicht eingehalten werden.</li>
+                <li className="pl-1"><strong>Betreuungswarnungen:</strong> Rote, transparente Bereiche im Wochenplan zeigen visuell an, wenn die Mindestbesetzung in einer Gruppe während der Öffnungszeiten nicht erreicht wird. Diese basieren auf der als "Betreuungskategorie" markierten Kategorie. Diese Warnung wird nur angezeigt wenn Öffnungszeiten der Gruppe hinterlegt wurden.</li>
+                <li className="pl-1"><strong>Wochenübersicht Warnungen:</strong> In der Wochenübersicht am Ende des Plans werden Über-/Unterstunden, Verfügungszeit-Defizite und Diskrepanzen bei der Arbeitszeit an Anwesenheitstagen (für spezielle Mitarbeitertypen) angezeigt.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+            <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Drucken</summary>
+            <div className="mt-2 text-base">
+              <p>Drucke deinen Wochenplan für die Dokumentation oder den Aushang:</p>
+              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
+              <ul className="list-disc list-outside pl-5 space-y-1">
+                <li className="pl-1"><strong>Druckoptionen:</strong> Klicke auf "Wochenplan drucken", um ein Fenster mit Optionen zu öffnen. Hier kannst du wählen, ob du die Wochenübersicht mitdrucken möchtest.</li>
+                <li className="pl-1"><strong>Filter für den Druck:</strong> Du kannst den angezeigten Plan vor dem Drucken nach Gruppen oder einzelnen Mitarbeitern filtern. Nur die gefilterten Daten werden gedruckt.</li>
+                <li className="pl-1">Die Druckansicht ist optimiert, um nur die relevanten Informationen anzuzeigen und unnötige UI-Elemente auszublenden.</li>
+              </ul>
+            </div>
+          </details>
+
+          <p className="mt-6 text-center text-sm text-gray-500">
+            Solltest du Fragen oder Probleme haben, nutze bitte den "Fehler melden"-Button oder melde dich bei mir per E-Mail.
+          </p>
+        </div>
+
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={onClose}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
+          >
+            Schließen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // --- Release Notes Data ---
 export const RELEASE_NOTES = [
   {
-    version: "1.0.6.1 (Beta)",
+    version: "Beta 1.7.0",
+    optionalTitle: "Erklärbär-Update", // NEU: Optionaler Titel
+    whatsNew: [
+      "Ein neuer <strong>Hilfe-Button</strong> ist jetzt oben rechts neben dem 'Fehler melden'-Button verfügbar. Klicke darauf, um die neue <strong>Anleitung</strong> zu öffnen.",
+    ],
+    bugFixes: [
+    ],
+    adjustments: [
+      "Button Animationen wurden leicht angepasst.",
+      "Versionierung wurde angepasst.",
+    ]
+  },
+  {
+    version: "Beta 1.6.1",
     whatsNew: [
     ],
     bugFixes: [
-      "Die Buttons zum Bearbeiten des Wochenplantitels und zur Verwaltung des Wochenplans werden in der Druckansicht nicht mehr angezeigt.",
+      "Die Buttons zum Bearbeiten des Wochenplan-Titels und zur Verwaltung des Wochenplans werden in der Druckansicht nicht mehr angezeigt.",
     ],
     adjustments: [
       "Das Aussehen beim Drucken wurde leicht angepasst.",
     ]
   },
   {
-    version: "1.0.6 (Beta)",
+    version: "Beta 1.6.0",
+    optionalTitle: "Speicher-Update", // NEU: Optionaler Titel
     whatsNew: [
     ],
     bugFixes: [
     ],
     adjustments: [
-      "Daten werden nun ausschließlich in Speicherdateien auf dem PC gespeichert. Damit diese automatisch geladen werden, wenn die App geöffnet wird, muss im Browser die Berechtigung 'Daten bearbeiten' erteilt und die Option 'Bei jedem Besuch erlauben' ausgewählt werden.",
-      "Wenn alle Daten exportiert werden, wird nun eine .dienstplan Datei statt einer .json Datei erstellt.",
-      "Wenn ein Wochenplan exportiert wird, wird nun eine .wochenplan Datei statt einer .json Datei erstellt."
+      "Daten werden nun ausschließlich in Speicherdateien auf dem PC gespeichert. Damit diese automatisch geladen werden, wenn die App geöffnet wird, muss im Browser die Berechtigung <strong>'Daten bearbeiten'</strong> erteilt und die Option <strong>'Bei jedem Besuch erlauben'</strong> ausgewählt werden.",
+      "Wenn alle Daten exportiert werden, wird nun eine <strong>.dienstplan</strong> Datei statt einer .json Datei erstellt.",
+      "Wenn ein Wochenplan exportiert wird, wird nun eine <strong>.wochenplan</strong> Datei statt einer .json Datei erstellt."
     ]
   },
   {
-    version: "1.0.5 (Beta)",
+    version: "Beta 1.5.0",
     whatsNew: [
       "Es kann nun nach einzelnen Mitarbeitern gefiltert werden.",
       "Gruppen und Mitarbeiter können nun direkt in den Druckoptionen gefiltert werden.",
@@ -785,7 +981,8 @@ export const RELEASE_NOTES = [
     ]
   },
   {
-    version: "1.0.4 (Beta)",
+    version: "Beta 1.4.0",
+    optionalTitle: "Druck-Update",
     whatsNew: [
       "Die erste funktionierende Druckenfunktion wurde implementiert."
     ],
@@ -795,7 +992,7 @@ export const RELEASE_NOTES = [
     adjustments: []
   },
   {
-    version: "1.0.3 (Beta)",
+    version: "Beta 1.3.0",
     whatsNew: [
       "Blöcke können nun anderen Gruppen zugeordnet werden, und bei Betreuungswarnungen wird dies korrekt berücksichtigt."
     ],
@@ -806,11 +1003,12 @@ export const RELEASE_NOTES = [
     adjustments: []
   },
   {
-    version: "1.0.2 (Beta)",
+    version: "Beta 1.2.0",
+    optionalTitle: "Gruppen & Warnungen Update", // NEU: Optionaler Titel
     whatsNew: [
-      "Unter 'Mitarbeiter verwalten' können Mitarbeiter als Zusatzkräfte angegeben werden. Zusatzkräfte werden unter 'normale Mitarbeiter', aber über 'Praktikanten', 'FSJler' und 'Auszubildende' sortiert.",
-      "In 'Gruppen verwalten' können nun Öffnungszeiten der Gruppen angegeben werden. Außerdem kann dort angegeben werden wie viele Mitarbeiter mindestens in der Betreuung sein sollen. Im Wochenplan wird dann eine Warnung angezeigt wenn diese Regel nicht erfüllt ist. Die Anzeige von Warnungen ist nur möglich wenn in Kategorien verwalten ein Block mit der Checkbox 'Als Betreuungskategorie verwenden' markiert wurde.",
-      "Feedback Button oben rechts hinzugefügt."
+      "Unter 'Mitarbeiter verwalten' können Mitarbeiter als <strong>Zusatzkräfte</strong> angegeben werden. Zusatzkräfte werden unter 'normale Mitarbeiter', aber über 'Praktikanten', 'FSJler' und 'Auszubildende' sortiert.",
+      "In 'Gruppen verwalten' können nun <strong>Öffnungszeiten der Gruppen</strong> angegeben werden. Außerdem kann dort angegeben werden wie viele Mitarbeiter mindestens in der Betreuung sein sollen. Im Wochenplan wird dann eine Warnung angezeigt wenn diese Regel nicht erfüllt ist. Die Anzeige von Warnungen ist nur möglich wenn in Kategorien verwalten ein Block mit der Checkbox 'Als Betreuungskategorie verwenden' markiert wurde.",
+      "<strong>Feedback Button</strong> oben rechts hinzugefügt."
     ],
     bugFixes: [
       "Im Wochenplan können sich nun Blöcke nicht mehr überlappen."
@@ -818,22 +1016,24 @@ export const RELEASE_NOTES = [
     adjustments: []
   },
   {
-    version: "1.0.0 (Beta)",
+    version: "Beta 1.1.0",
+    optionalTitle: "Erster Beta Release des Dienstplaners", // NEU: Optionaler Titel
     whatsNew: [
-      "Individuelle Verfügbarkeiten für deine Mitarbeiter: Im Bereich 'Mitarbeiter verwalten' kannst du jetzt spezifische Verfügbarkeitszeiten für einzelne Mitarbeiter festlegen. Diese individuellen Einstellungen überschreiben die allgemeingültige 'Verfügbarkeitszeit-Regel' und ermöglichen dir eine präzisere und bedarfsgerechtere Planung.",
-      "Erweiterte Mitarbeiterrollen und intelligente Arbeitszeitprüfung: Lege deine Mitarbeiter detailliert als normale Mitarbeiter, FSJler, Auszubildende oder Praktikanten fest. Für FSJler, Auszubildende und Praktikanten kannst du zudem die spezifischen Tage definieren, an denen sie in deiner Einrichtung anwesend sind. Im Wochenplan werden Schulzeiten dieser Mitarbeiter visuell heller dargestellt, um deren Abwesenheit klar zu kennzeichnen. Zusätzlich erhältst du in der Wochenübersicht eine Benachrichtigung, wenn die Anwesenheitstage von FSJlern, Auszubildenden oder Praktikanten zu viel oder zu wenig Arbeitszeit aufweisen.",
-      "Gruppen-Öffnungszeiten und Personalbesetzungsprüfung: Definiere für jede Gruppe die Öffnungszeiten pro Wochentag, auch mit Unterbrechungen (z.B. Mittagspause). Die App warnt dich, wenn während dieser Öffnungszeiten weniger als zwei Mitarbeiter in der von dir markierten 'Betreuungskategorie' anwesend sind. Diese Funktion ist optional und wird nur aktiv, wenn Öffnungszeiten und eine Betreuungskategorie festgelegt sind."
+      "<strong>Individuelle Verfügbarkeiten</strong> für deine Mitarbeiter: Im Bereich 'Mitarbeiter verwalten' kannst du jetzt spezifische Verfügbarkeitszeiten für einzelne Mitarbeiter festlegen. Diese individuellen Einstellungen überschreiben die allgemeingültige 'Verfügbarkeitszeit-Regel' und ermöglichen dir eine präzisere und bedarfsgerechtere Planung.",
+      "<strong>Erweiterte Mitarbeiterrollen und intelligente Arbeitszeitprüfung:</strong> Lege deine Mitarbeiter detailliert als normale Mitarbeiter, FSJler, Auszubildende oder Praktikanten fest. Für FSJler, Auszubildende und Praktikanten kannst du zudem die spezifischen Tage definieren, an denen sie in deiner Einrichtung anwesend sind. Im Wochenplan werden Schulzeiten dieser Mitarbeiter visuell heller dargestellt, um deren Abwesenheit klar zu kennzeichnen. Zusätzlich erhältst du in der Wochenübersicht eine Benachrichtigung, wenn die Anwesenheitstage von FSJlern, Auszubildenden oder Praktikanten zu viel oder zu wenig Arbeitszeit aufweisen.",
+      "<strong>Gruppen-Öffnungszeiten und Personalbesetzungsprüfung:</strong> Definiere für jede Gruppe die Öffnungszeiten pro Wochentag, auch mit Unterbrechungen (z.B. Mittagspause). Die App warnt dich, wenn während dieser Öffnungszeiten weniger als zwei Mitarbeiter in der von dir markierten 'Betreuungskategorie' anwesend sind. Diese Funktion ist optional und wird nur aktiv, wenn Öffnungszeiten und eine Betreuungskategorie festgelegt sind."
     ],
     bugFixes: [
       "Ein Block wird nun präzise in das Feld platziert, in das geklickt wurde, wodurch die Bedienung noch zuverlässiger wird."
     ],
     adjustments: [
-      "Optimierte Farbdarstellung für Gruppen: In 'Gruppen verwalten' erscheinen Farben nun kräftiger, um eine bessere Unterscheidbarkeit zu gewährleisten. Im Wochenplan und in der Mitarbeiterverwaltung bleiben sie zur besseren Lesbarkeit weiterhin dezent.",
-      "Visuelle Zuordnung von Mitarbeitern zu Gruppen: Im Bereich 'Mitarbeiter verwalten' werden vorhandene Mitarbeiter nun mit der jeweiligen Gruppenfarbe hinterlegt, was dir die visuelle Identifikation und Zuordnung erheblich vereinfacht.",
-      "Verbessertes Popup im Wochenplan: Das 'Kategorie wählen'-Popup im Wochenplan wird jetzt in den Farben der Blöcke dargestellt, was die Navigation und Auswahl intuitiver macht."
+      "<strong>Optimierte Farbdarstellung für Gruppen:</strong> In 'Gruppen verwalten' erscheinen Farben nun kräftiger, um eine bessere Unterscheidbarkeit zu gewährleisten. Im Wochenplan und in der Mitarbeiterverwaltung bleiben sie zur besseren Lesbarkeit weiterhin dezent.",
+      "<strong>Visuelle Zuordnung von Mitarbeitern zu Gruppen:</strong> Im Bereich 'Mitarbeiter verwalten' werden vorhandene Mitarbeiter nun mit der jeweiligen Gruppenfarbe hinterlegt, was dir die visuelle Identifikation und Zuordnung erheblich vereinfacht.",
+      "<strong>Verbessertes Popup im Wochenplan:</strong> Das 'Kategorie wählen'-Popup im Wochenplan wird jetzt in den Farben der Blöcke dargestellt, was die Navigation und Auswahl intuitiver macht."
     ]
   }
 ];
+
 
 
 // --- New Version Info Popup Component ---
@@ -848,7 +1048,7 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
       <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100 relative">
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 transition duration-200"
+          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 transition hover:scale-110 duration-300 w-8 h-8 rounded-full flex items-center justify-center p-0"
           aria-label="Schließen"
         >
           <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -856,55 +1056,70 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
 
         {!showHistory ? (
           <>
-            <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">Update: Version {version}</h3>
+            {/* Bedingte Anzeige für den Haupt-Update-Titel */}
+            {currentVersionNotes?.optionalTitle ? (
+              <>
+                <h3 className="text-4xl font-bold text-gray-800 mb-2 text-center">
+                  {currentVersionNotes.optionalTitle}
+                </h3>
+                <p className="text-xl text-gray-600 mb-4 text-center">
+                  Version {version}
+                </p>
+              </>
+            ) : (
+              <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">
+                Update: Version {version}
+              </h3>
+            )}
+
             <p className="text-gray-700 mb-4">
-              Willkommen zurück! Diese Version enthält wichtige Verbesserungen und neue Funktionen, um deine Planung noch effizienter zu gestalten.
+              Das sind die neuen Funktionen, Verbesserungen oder Fehlerbehebungen:
             </p>
 
             {currentVersionNotes && currentVersionNotes.whatsNew.length > 0 && (
-              <>
-                <h4 className="text-xl font-semibold text-gray-800 mb-2">Was ist neu?</h4>
-                <ul className="list-disc list-inside text-gray-700 mb-4 space-y-1">
+              <div>
+                <p className="font-semibold text-base text-gray-700">Was ist neu:</p>
+                <ul className="list-disc list-outside pl-5 space-y-1">
                   {currentVersionNotes.whatsNew.map((item, index) => (
-                    <li key={index}>{item}</li>
+                    <li key={index} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
                   ))}
                 </ul>
-              </>
+              </div>
             )}
 
             {currentVersionNotes && currentVersionNotes.adjustments.length > 0 && (
-              <>
-                <h4 className="text-xl font-semibold text-gray-800 mb-2">Anpassungen</h4>
-                <ul className="list-disc list-inside text-gray-700 mb-4 space-y-1">
+              <div>
+                <p className="font-semibold text-base text-gray-700 mt-4">Anpassungen:</p>
+                <ul className="list-disc list-outside pl-5 space-y-1">
                   {currentVersionNotes.adjustments.map((item, index) => (
-                    <li key={index}>{item}</li>
+                    <li key={index} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
                   ))}
                 </ul>
-              </>
+              </div>
             )}
 
             {currentVersionNotes && currentVersionNotes.bugFixes.length > 0 && (
-              <>
-                <h4 className="text-xl font-semibold text-gray-800 mb-2">Fehlerbehebungen</h4>
-                <ul className="list-disc list-inside text-gray-700 mb-4 space-y-1">
+              <div>
+                <p className="font-semibold text-base text-gray-700 mt-4">Fehlerbehebungen:</p>
+                <ul className="list-disc list-outside pl-5 space-y-1">
                   {currentVersionNotes.bugFixes.map((item, index) => (
-                    <li key={index}>{item}</li>
+                    <li key={index} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
                   ))}
                 </ul>
-              </>
+              </div>
             )}
 
             <div className="flex justify-center mt-6">
               <button
                 onClick={onClose}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out mr-4"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out mr-4"
               >
                 Verstanden!
               </button>
               {historicalNotes.length > 0 && (
                 <button
                   onClick={() => setShowHistory(true)}
-                  className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out"
+                  className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
                 >
                   Updateverlauf
                 </button>
@@ -915,27 +1130,71 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
           <>
             <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">Updateverlauf</h3>
             <div className="space-y-6">
-              {releaseNotes.map((note, index) => (
-                <div key={index} className="border-b pb-4 last:border-b-0 last:pb-0">
-                  <h4 className="text-xl font-semibold text-gray-800 mb-2">Version {note.version}</h4>
-                  <ul className="list-disc list-inside text-gray-700 space-y-1">
-                    {note.whatsNew.map((item, idx) => (
-                      <li key={`new-${idx}`} className="text-sm">{item}</li>
-                    ))}
-                    {note.adjustments.map((item, idx) => (
-                      <li key={`adj-${idx}`} className="text-sm">{item}</li>
-                    ))}
-                    {note.bugFixes.map((item, idx) => (
-                      <li key={`fix-${idx}`} className="text-sm">{item}</li>
-                    ))}
-                  </ul>
+              {releaseNotes.sort((a, b) => {
+                const compareVersions = (version1, version2) => {
+                  const cleanV1 = version1.replace(/\s*\(.*\)\s*$/, '');
+                  const cleanV2 = version2.replace(/\s*\(.*\)\s*$/, '');
+                  const parts1 = cleanV1.split('.').map(Number);
+                  const parts2 = cleanV2.split('.').map(Number);
+                  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+                    const p1 = parts1[i] || 0;
+                    const p2 = parts2[i] || 0;
+                    if (p1 > p2) return 1;
+                    if (p1 < p2) return -1;
+                  }
+                  return 0;
+                };
+                return compareVersions(b.version, a.version);
+              }).map((note, index) => (
+                <div key={index} className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+                  {/* KORRIGIERT: Version und optionaler Titel getrennt und Größe angepasst */}
+                  <h4 className="font-semibold text-xl text-gray-800 mb-0">
+                    Version {note.version}
+                  </h4>
+                  {note.optionalTitle && (
+                    <p className="font-semibold text-base text-gray-600 mt-1">
+                      ({note.optionalTitle})
+                    </p>
+                  )}
+                  <div className="mt-2 text-base space-y-2">
+                    {note.whatsNew.length > 0 && (
+                      <div>
+                        <p className="font-semibold text-base text-gray-700">Was ist neu:</p>
+                        <ul className="list-disc list-outside pl-5 space-y-1">
+                          {note.whatsNew.map((item, i) => (
+                            <li key={i} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {note.bugFixes.length > 0 && (
+                      <div>
+                        <p className="font-semibold text-base text-gray-700 mt-4">Bugfixes:</p>
+                        <ul className="list-disc list-outside pl-5 space-y-1">
+                          {note.bugFixes.map((item, i) => (
+                            <li key={i} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {note.adjustments.length > 0 && (
+                      <div>
+                        <p className="font-semibold text-base text-gray-700 mt-4">Anpassungen:</p>
+                        <ul className="list-disc list-outside pl-5 space-y-1">
+                          {note.adjustments.map((item, i) => (
+                            <li key={i} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
             <div className="flex justify-center mt-6">
               <button
                 onClick={() => setShowHistory(false)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
               >
                 Zurück zum aktuellen Update
               </button>
@@ -946,6 +1205,7 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
     </div>
   );
 };
+
 
 // New component: OpeningHoursEditor - DEFINED DIRECTLY IN APP.JSX
 const OpeningHoursEditor = ({ group, onUpdateGroup }) => {
@@ -1172,7 +1432,7 @@ function App() {
   // IMPORTANT: Update this version string whenever you release a new version
   // for which you want to show the "What's New" popup.
   // Use a semantic versioning scheme (major.minor.patch) for easy comparison.
-  const CURRENT_APP_VERSION = "1.0.6.1 (Beta)"; // Updated version string
+  const CURRENT_APP_VERSION = "Beta 1.7.0"; // Updated version string
 
   const [message, setMessage] = useState('');
 
@@ -1191,6 +1451,8 @@ function App() {
   // New state for showing the version popup
   const [showNewVersionPopup, setShowNewVersionPopup] = useState(false);
 
+    // NEU: State für die Sichtbarkeit des Hilfe-Modals
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Initial group state for new groups - now empty by default
   const initialOpeningHoursTemplate = {};
@@ -2245,6 +2507,15 @@ function App() {
     setEditingSubCategoryId(null);
     setNewSubCategory({ name: '', parentCategoryId: '', color: blockColors[0] || 'bg-gray-500' }); // Use blockColors
   };
+
+    // NEU: Funktionen zum Öffnen und Schließen des Hilfe-Modals
+  const handleOpenHelpModal = useCallback(() => {
+    setShowHelpModal(true);
+  }, []);
+
+  const handleCloseHelpModal = useCallback(() => {
+    setShowHelpModal(false);
+  }, []);
 
   // --- Disposal Time Rules Management ---
   const handleAddDisposalRule = () => {
@@ -3499,12 +3770,24 @@ function App() {
             Version {CURRENT_APP_VERSION}
           </div>
 
+          {/* NEU: Hilfe-Button (links vom Feedback-Button) */}
+          <a
+            href="javascript:void(0)" // Verhindert Navigation, wenn auf den Link geklickt wird
+            onClick={handleOpenHelpModal}
+            className="absolute top-4 right-16 bg-blue-500 hover:bg-blue-600 hover:text-white text-white p-2 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-110 flex items-center justify-center print-hidden-element w-10 h-10"
+            aria-label="Hilfe öffnen"
+            title="Hilfe & Anleitung"
+            role="button" // Fügt eine semantische Rolle hinzu, da es kein echter Navigationslink ist
+          >
+            <HelpCircle size={24} /> {/* Lucide React HelpCircle Icon */}
+          </a>
+
           {/* Feedback Button */}
           <a
             href="https://docs.google.com/forms/d/e/1FAIpQLSehtSDB10AZE1aSGGvjeOeGneIhU8pWobYVWN9Ha3ob3AO8AQ/viewform?usp=dialog"
             target="_blank"
             rel="noopener noreferrer"
-            className="absolute top-4 right-4 bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-110 flex items-center justify-center print-hidden-element"
+            className="absolute top-4 right-4 bg-blue-500 hover:bg-blue-600 hover:text-white text-white p-2 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-110 flex items-center justify-center print-hidden-element"
             title="Feedback geben oder Bug melden"
           >
             <MessageSquare size={24} /> {/* Lucide React icon */}
@@ -5132,6 +5415,13 @@ function App() {
                 version={CURRENT_APP_VERSION}
                 onClose={() => setShowNewVersionPopup(false)}
                 releaseNotes={RELEASE_NOTES}
+              />
+            )}
+
+            {/* NEU: Hilfe-Modal rendern */}
+            {showHelpModal && (
+              <HelpModal
+                onClose={handleCloseHelpModal}
               />
             )}
           </div>
