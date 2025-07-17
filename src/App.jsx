@@ -2,6 +2,91 @@ import React, { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffe
 import { v4 as uuidv4 } from 'uuid'; // Import for generating unique IDs
 import { MessageSquare, AlertCircle } from 'lucide-react'; // Import the MessageSquare and AlertCircle icons
 
+// --- IndexedDB Constants for File Handle Storage ---
+const DB_NAME = 'DienstplanAppDB';
+const STORE_NAME = 'fileHandles';
+const DB_VERSION = 1;
+
+// Helper function to open IndexedDB
+const openDb = () => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+
+    request.onsuccess = (event) => {
+      resolve(event.target.result);
+    };
+
+    request.onerror = (event) => {
+      console.error("IndexedDB error:", event.target.error);
+      reject(event.target.error);
+    };
+  });
+};
+
+// Helper function to get a file handle from IndexedDB
+const getFileHandleFromDb = async (key = 'lastFile') => {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.get(key);
+
+    request.onsuccess = (event) => {
+      resolve(event.target.result);
+    };
+
+    request.onerror = (event) => {
+      console.error("Error getting file handle from IndexedDB:", event.target.error);
+      reject(event.target.error);
+    };
+  });
+};
+
+// Helper function to put a file handle into IndexedDB
+const putFileHandleInDb = async (fileHandle, key = 'lastFile') => {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.put(fileHandle, key);
+
+    request.onsuccess = () => {
+      resolve();
+    };
+
+    request.onerror = (event) => {
+      console.error("Error putting file handle in IndexedDB:", event.target.error);
+      reject(event.target.error);
+    };
+  });
+};
+
+// Helper function to delete a file handle from IndexedDB
+const deleteFileHandleFromDb = async (key = 'lastFile') => {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.delete(key);
+
+    request.onsuccess = () => {
+      resolve();
+    };
+
+    request.onerror = (event) => {
+      console.error("Error deleting file handle from IndexedDB:", event.target.error);
+      reject(event.target.error);
+    };
+  });
+};
+
 // Define the days of the week for the constant plan
 const WEEK_DAYS_PLAN = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'];
 
@@ -619,22 +704,22 @@ const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSc
             onClick={onExportSchedule}
             className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out"
           >
-            Wochenplan exportieren (JSON)
+            Wochenplan exportieren
           </button>
 
           <input
             type="file"
             ref={fileInputRef} // Hier den Ref übergeben
             onChange={onImportSchedule}
-            accept=".json"
+            accept=".wochenplan" // NEU: Nur .wochenplan Dateien akzeptieren
             className="hidden"
             id="importScheduleFileModal" // Eindeutige ID für dieses Modal
           />
           <label
             htmlFor="importScheduleFileModal"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out cursor-pointer"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out cursor-pointer text-center"
           >
-            Wochenplan importieren (JSON)
+            Wochenplan importieren
           </label>
 
           <button
@@ -659,9 +744,22 @@ const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSc
 };
 
 
+
 // --- Release Notes Data ---
 export const RELEASE_NOTES = [
-    {
+  {
+    version: "1.0.6 (Beta)",
+    whatsNew: [
+    ],
+    bugFixes: [
+    ],
+    adjustments: [
+      "Daten werden nun ausschließlich in Speicherdateien auf dem PC gespeichert. Damit diese automatisch geladen werden, wenn die App geöffnet wird, muss im Browser die Berechtigung 'Daten bearbeiten' erteilt und die Option 'Bei jedem Besuch erlauben' ausgewählt werden.",
+      "Wenn alle Daten exportiert werden, wird nun eine .dienstplan Datei statt einer .json Datei erstellt.",
+      "Wenn ein Wochenplan exportiert wird, wird nun eine .wochenplan Datei statt einer .json Datei erstellt."
+    ]
+  },
+  {
     version: "1.0.5 (Beta)",
     whatsNew: [
       "Es kann nun nach einzelnen Mitarbeitern gefiltert werden.",
@@ -678,7 +776,7 @@ export const RELEASE_NOTES = [
   {
     version: "1.0.4 (Beta)",
     whatsNew: [
-      "Die erste funktionierende Druckenfunktion wurde implementiert.",
+      "Die erste funktionierende Druckenfunktion wurde implementiert."
     ],
     bugFixes: [
       "Arbeitszeitwarnungen werden nun wieder angezeigt."
@@ -688,7 +786,7 @@ export const RELEASE_NOTES = [
   {
     version: "1.0.3 (Beta)",
     whatsNew: [
-      "Blöcke können nun anderen Gruppen zugeordnet werden, und bei Betreuungswarnungen wird dies korrekt berücksichtigt.",
+      "Blöcke können nun anderen Gruppen zugeordnet werden, und bei Betreuungswarnungen wird dies korrekt berücksichtigt."
     ],
     bugFixes: [
       "Im Wochenplan können sich Blöcke nun wirklich nicht mehr überlappen.",
@@ -1063,9 +1161,18 @@ function App() {
   // IMPORTANT: Update this version string whenever you release a new version
   // for which you want to show the "What's New" popup.
   // Use a semantic versioning scheme (major.minor.patch) for easy comparison.
-  const CURRENT_APP_VERSION = "1.0.5 (Beta)"; // Updated version string
+  const CURRENT_APP_VERSION = "1.0.6 (Beta)"; // Updated version string
 
   const [message, setMessage] = useState('');
+
+  // NEU: State, um zu verfolgen, ob der initiale Ladevorgang abgeschlossen ist
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+
+  // NEU: Ref für den Auto-Save Debounce Timer
+  const autoSaveTimeoutRef = useRef(null);
+
+  // NEU: State für das File System Access API Handle
+  const [fileHandle, setFileHandle] = useState(null);
 
   // Local data loading state
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -1618,181 +1725,191 @@ function App() {
     return warningsByGroupAndDay;
   }, [groups, employees, masterSchedule.shifts, categories, subCategories, uniqueSortedGroups, selectedGroupIdFilter, showStaffingWarningsGlobally]); // Hinzugefügt: showStaffingWarningsGlobally
 
-
-  // --- Local Storage Data Loading and Saving ---
+  // Initiales Laden der Daten und Versionsprüfung
   useEffect(() => {
     // Helper function to compare semantic versions (e.g., "1.0.0" vs "1.0.1")
     const compareVersions = (v1, v2) => {
-      // Remove "(Beta)" or any other non-numeric suffixes for comparison
       const cleanV1 = v1.replace(/\s*\(.*\)\s*$/, '');
       const cleanV2 = v2.replace(/\s*\(.*\)\s*$/, '');
-
       const parts1 = cleanV1.split('.').map(Number);
       const parts2 = cleanV2.split('.').map(Number);
-
       for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
         const p1 = parts1[i] || 0;
         const p2 = parts2[i] || 0;
-
         if (p1 > p2) return 1;
         if (p1 < p2) return -1;
       }
       return 0;
     };
 
-    // Load data from localStorage on component mount
-    const loadData = () => {
+    const loadInitialData = async () => {
+      console.log("App startet: Versuche initiale Daten zu laden...");
       try {
-        const storedGroups = JSON.parse(localStorage.getItem('groups')) || [];
-        const storedEmployees = JSON.parse(localStorage.getItem('employees')) || [];
-        const storedCategories = JSON.parse(localStorage.getItem('categories')) || [];
-        const storedSubCategories = JSON.parse(localStorage.getItem('subCategories')) || [];
-        const storedDisposalTimeRules = JSON.parse(localStorage.getItem('disposalTimeRules')) || []; // New: load disposal rules
-        const storedMasterSchedule = JSON.parse(localStorage.getItem('masterSchedule'));
-        const storedOrderedGroupIds = JSON.parse(localStorage.getItem('orderedGroupIds')) || [];
-        const lastShownAppVersion = localStorage.getItem('lastShownAppVersion'); // Get last shown version
+        const storedHandle = await getFileHandleFromDb();
+        let loadedSuccessfully = false;
+        console.log("IndexedDB: storedHandle gefunden?", !!storedHandle);
 
-        // Initialize openingHours, daysWithOpeningHours, minStaffRequired, disableStaffingWarning for groups if not present
-        setGroups(storedGroups.map(g => {
-          const groupWithInitializedHours = { ...g };
-          if (!groupWithInitializedHours.openingHours) {
-            groupWithInitializedHours.openingHours = {};
-          }
-          WEEK_DAYS_PLAN.forEach(day => {
-            if (!groupWithInitializedHours.openingHours[day]) {
-              groupWithInitializedHours.openingHours[day] = []; // Default to empty array
-            }
-          });
+        if (storedHandle) {
+          console.log("StoredHandle gefunden. Überprüfe Berechtigung...");
+          const permissionStatus = await storedHandle.queryPermission({ mode: 'readwrite' });
+          console.log("Berechtigungsstatus:", permissionStatus);
 
-          // minStaffRequired: if not present, leave as undefined so it can be displayed as "nicht festgelegt"
-          groupWithInitializedHours.minStaffRequired = (g.minStaffRequired === undefined || g.minStaffRequired === null) ? undefined : g.minStaffRequired;
-          // disableStaffingWarning: if not present, default to true (checkbox unchecked)
-          groupWithInitializedHours.disableStaffingWarning = g.disableStaffingWarning ?? true;
+          if (permissionStatus === 'granted') {
+            try {
+              console.log("Berechtigung erteilt. Versuche Datei zu lesen...");
+              const file = await storedHandle.getFile();
+              const content = await file.text();
+              const importedData = JSON.parse(content);
+              console.log("Dateiinhalt erfolgreich gelesen und geparst.");
 
-          // Ensure daysWithOpeningHours is correctly structured if loaded from older data
-          if (typeof groupWithInitializedHours.daysWithOpeningHours !== 'object' || groupWithInitializedHours.daysWithOpeningHours === null) {
-              groupWithInitializedHours.daysWithOpeningHours = {};
-              WEEK_DAYS_PLAN.forEach(day => groupWithInitializedHours.daysWithOpeningHours[day] = false); // Default to false
-          } else {
-              // Ensure all days are present in daysWithOpeningHours map
-              WEEK_DAYS_PLAN.forEach(day => {
-                  if (groupWithInitializedHours.daysWithOpeningHours[day] === undefined) {
-                      groupWithInitializedHours.daysWithOpeningHours[day] = false; // Default to false
+              // Basic validation of imported data structure
+              if (
+                importedData.groups && Array.isArray(importedData.groups) &&
+                importedData.employees && Array.isArray(importedData.employees) &&
+                importedData.categories && Array.isArray(importedData.categories) &&
+                importedData.subCategories && Array.isArray(importedData.subCategories) &&
+                importedData.masterSchedule && importedData.masterSchedule.shifts && Array.isArray(importedData.masterSchedule.shifts)
+              ) {
+                // Daten in die States laden
+                setGroups(importedData.groups.map(g => {
+                  const groupWithInitializedHours = { ...g };
+                  if (!groupWithInitializedHours.openingHours) {
+                    groupWithInitializedHours.openingHours = {};
                   }
-              });
+                  WEEK_DAYS_PLAN.forEach(day => {
+                    if (!groupWithInitializedHours.openingHours[day]) {
+                      groupWithInitializedHours.openingHours[day] = [];
+                    }
+                  });
+                  groupWithInitializedHours.minStaffRequired = (g.minStaffRequired === undefined || g.minStaffRequired === null) ? undefined : g.minStaffRequired;
+                  groupWithInitializedHours.disableStaffingWarning = g.disableStaffingWarning ?? true;
+                  if (typeof groupWithInitializedHours.daysWithOpeningHours !== 'object' || groupWithInitializedHours.daysWithOpeningHours === null) {
+                      groupWithInitializedHours.daysWithOpeningHours = {};
+                      WEEK_DAYS_PLAN.forEach(day => groupWithInitializedHours.daysWithOpeningHours[day] = false);
+                  } else {
+                      WEEK_DAYS_PLAN.forEach(day => {
+                          if (groupWithInitializedHours.daysWithOpeningHours[day] === undefined) {
+                              groupWithInitializedHours.daysWithOpeningHours[day] = false;
+                          }
+                      });
+                  }
+                  return groupWithInitializedHours;
+                }));
+                setEmployees(importedData.employees.map(emp => ({
+                  ...emp,
+                  overriddenDisposalHours: emp.overriddenDisposalHours ?? '',
+                  type: emp.type ?? 'normal',
+                  presenceDays: emp.presenceDays ?? [...WEEK_DAYS_PLAN],
+                })));
+                setCategories(importedData.categories.map(cat => ({
+                  ...cat,
+                  isDisposalTimeCategory: cat.isDisposalTimeCategory ?? false,
+                  isCareCategory: cat.isCareCategory ?? false
+                })));
+                setSubCategories(importedData.subCategories);
+                setDisposalTimeRules(importedData.disposalTimeRules || []);
+                setMasterSchedule(importedData.masterSchedule);
+                setOrderedGroupIds(importedData.orderedGroupIds || importedData.groups.map(g => g.id));
+
+                // Dynamic adjustment of display time range based on imported shifts
+                let minOverallMinutes = 24 * 60;
+                let maxOverallMinutes = 0;
+                let hasShifts = false;
+
+                importedData.masterSchedule.shifts.forEach(shift => {
+                  shift.segments.forEach(segment => {
+                    const segmentStartMinutes = timeToMinutes(segment.startTime);
+                    const segmentEndMinutes = timeToMinutes(segment.endTime);
+
+                    minOverallMinutes = Math.min(minOverallMinutes, segmentStartMinutes);
+                    maxOverallMinutes = Math.max(maxOverallMinutes, segmentEndMinutes);
+                    hasShifts = true;
+                  });
+                });
+
+                if (hasShifts) {
+                  let newDisplayStartMinutes = Math.floor(minOverallMinutes / 15) * 15;
+                  let newDisplayEndMinutes = Math.ceil(maxOverallMinutes / 15) * 15;
+                  if (newDisplayEndMinutes <= newDisplayStartMinutes) {
+                      newDisplayEndMinutes = newDisplayStartMinutes + 15;
+                  }
+                  newDisplayStartMinutes = Math.max(0, newDisplayStartMinutes);
+                  newDisplayEndMinutes = Math.min(24 * 60, newDisplayEndMinutes);
+
+                  setDisplayStartHour(Math.floor(newDisplayStartMinutes / 60));
+                  setDisplayStartMinute(newDisplayStartMinutes % 60);
+                  setDisplayEndHour(Math.floor(newDisplayEndMinutes / 60));
+                  setDisplayEndMinute(newDisplayEndMinutes % 60);
+                } else {
+                  setDisplayStartHour(6);
+                  setDisplayStartMinute(0);
+                  setDisplayEndHour(18);
+                  setDisplayEndMinute(0);
+                }
+                setWeeklyPlanTitle(importedData.masterSchedule.title || 'Wochenplan');
+                setFileHandle(storedHandle); // Setze das geladene Handle
+                setMessage('Daten aus letzter Datei erfolgreich geladen!');
+                loadedSuccessfully = true;
+                console.log("Daten erfolgreich aus gespeicherter Datei geladen.");
+              } else {
+                console.warn("Gespeicherte Datei hat ungültiges Format oder ist leer.");
+                setMessage('Die zuletzt geöffnete Datei ist ungültig oder leer. Bitte öffnen Sie eine neue Datei.');
+                await deleteFileHandleFromDb(); // Ungültiges Handle entfernen
+                setFileHandle(null);
+              }
+            } catch (readError) {
+              console.error("Fehler beim Lesen der zuletzt verwendeten Datei:", readError);
+              setMessage('Fehler beim Lesen der zuletzt verwendeten Datei. Bitte öffnen Sie eine neue Datei.');
+              await deleteFileHandleFromDb(); // Handle entfernen, da es nicht lesbar war
+              setFileHandle(null);
+            }
+          } else if (permissionStatus === 'prompt') {
+            setMessage('Berechtigung für die zuletzt verwendete Datei erforderlich. Bitte öffnen Sie die Datei manuell.');
+          } else if (permissionStatus === 'denied') {
+            setMessage('Berechtigung für die zuletzt verwendete Datei verweigert. Bitte öffnen Sie die Datei manuell.');
+            await deleteFileHandleFromDb(); // Handle entfernen, da Berechtigung verweigert
+            setFileHandle(null);
           }
-
-          return groupWithInitializedHours;
-        }));
-
-        // Ensure overriddenDisposalHours, type, and presenceDays are correctly loaded, defaulting if not present
-        setEmployees(storedEmployees.map(emp => ({
-          ...emp,
-          overriddenDisposalHours: emp.overriddenDisposalHours ?? '',
-          type: emp.type ?? 'normal', // Default to 'normal'
-          presenceDays: emp.presenceDays ?? [...WEEK_DAYS_PLAN], // Default to all days
-        })));
-        setCategories(storedCategories.map(cat => ({
-          ...cat,
-          isDisposalTimeCategory: cat.isDisposalTimeCategory ?? false,
-          isCareCategory: cat.isCareCategory ?? false, // Ensure boolean
-        })));
-        setSubCategories(storedSubCategories);
-        setDisposalTimeRules(storedDisposalTimeRules); // New: set disposal rules
-
-        // Initialize orderedGroupIds
-        if (storedOrderedGroupIds.length > 0 && storedGroups.every(g => storedOrderedGroupIds.includes(g.id))) {
-            setOrderedGroupIds(storedOrderedGroupIds);
-        } else {
-            // If no saved order or order is inconsistent, derive from current groups
-            setOrderedGroupIds(storedGroups.map(g => g.id));
         }
 
-
-        if (storedMasterSchedule) {
-          setMasterSchedule(storedMasterSchedule);
-          setDisplayStartHour(parseInt(storedMasterSchedule.displayStartTime.split(':')[0], 10));
-          setDisplayStartMinute(parseInt(storedMasterSchedule.displayStartTime.split(':')[1], 10));
-          setDisplayEndHour(parseInt(storedMasterSchedule.displayEndTime.split(':')[0], 10));
-          setDisplayEndMinute(parseInt(storedMasterSchedule.displayEndTime.split(':')[1], 10));
-          setWeeklyPlanTitle(storedMasterSchedule.title || 'Wochenplan');
-        } else {
-          // Initialize with default if no master schedule found
-          const defaultSchedule = { shifts: [], displayStartTime: '06:00', displayEndTime: '18:00', title: 'Wochenplan' };
-          setMasterSchedule(defaultSchedule);
-          localStorage.setItem('masterSchedule', JSON.stringify(defaultSchedule));
+        // Wenn keine Datei geladen wurde (entweder keine gespeichert oder Fehler), starten wir mit leeren Standarddaten
+        if (!loadedSuccessfully) {
+          console.log("Keine Datei automatisch geladen. Setze Standarddaten.");
+          setGroups([]);
+          setEmployees([]);
+          setCategories([]);
+          setSubCategories([]);
+          setDisposalTimeRules([]);
+          setMasterSchedule({ shifts: [], displayStartTime: '06:00', displayEndTime: '18:00', title: 'Wochenplan' });
+          setOrderedGroupIds([]);
+          setSelectedGroupIdFilter('all');
+          setDisplayStartHour(6);
+          setDisplayStartMinute(0);
+          setDisplayEndHour(18);
+          setDisplayEndMinute(0);
+          setWeeklyPlanTitle('Wochenplan');
+          setMessage('Keine vorherigen Daten gefunden. Starten Sie mit einem leeren Plan oder öffnen Sie eine Datei.');
         }
 
-        // --- Version Popup Logic ---
-        // If no version is stored, or the current version is newer than the stored one
+        // Versionsprüfung (unabhängig vom Datenladen)
+        const lastShownAppVersion = localStorage.getItem('lastShownAppVersion');
         if (!lastShownAppVersion || compareVersions(CURRENT_APP_VERSION, lastShownAppVersion) > 0) {
           setShowNewVersionPopup(true);
-          // Store the current version so the popup doesn't show again for this version
           localStorage.setItem('lastShownAppVersion', CURRENT_APP_VERSION);
         }
 
       } catch (error) {
-        console.error("Fehler beim Laden der Daten aus localStorage:", error);
-        setMessage("Fehler beim Laden der Daten. Möglicherweise sind die lokalen Daten beschädigt.");
+        console.error("Allgemeiner Fehler beim Initialisieren der App:", error);
+        setMessage("Ein Fehler ist beim Starten der App aufgetreten.");
       } finally {
         setIsDataLoaded(true); // Mark data as loaded regardless of success/failure
+        setIsInitialLoadComplete(true);
+        console.log("Initialer Ladevorgang abgeschlossen. isDataLoaded:", true);
       }
     };
 
-    loadData();
+    loadInitialData();
   }, []); // Empty dependency array means this runs once on mount
-
-  // Save data to localStorage whenever relevant states change
-  useEffect(() => {
-    if (isDataLoaded) { // Only save once initial data is loaded to prevent overwriting
-      localStorage.setItem('groups', JSON.stringify(groups));
-    }
-  }, [groups, isDataLoaded]);
-
-  useEffect(() => {
-    if (isDataLoaded) {
-      localStorage.setItem('employees', JSON.stringify(employees));
-    }
-  }, [employees, isDataLoaded]);
-
-  useEffect(() => {
-    if (isDataLoaded) {
-      localStorage.setItem('categories', JSON.stringify(categories));
-    }
-  }, [categories, isDataLoaded]);
-
-  useEffect(() => {
-    if (isDataLoaded) {
-      localStorage.setItem('subCategories', JSON.stringify(subCategories));
-    }
-  }, [subCategories, isDataLoaded]);
-
-  useEffect(() => {
-    if (isDataLoaded) {
-        localStorage.setItem('orderedGroupIds', JSON.stringify(orderedGroupIds));
-    }
-  }, [orderedGroupIds, isDataLoaded]);
-
-  useEffect(() => { // New: Save disposal rules
-    if (isDataLoaded) {
-      localStorage.setItem('disposalTimeRules', JSON.stringify(disposalTimeRules));
-    }
-  }, [disposalTimeRules, isDataLoaded]);
-
-
-  // Special effect for masterSchedule to handle display time and title updates
-  useEffect(() => {
-    if (isDataLoaded) {
-      const newMasterSchedule = {
-        ...masterSchedule,
-        displayStartTime: minutesToTime((displayStartHour * 60) + displayStartMinute),
-        displayEndTime: minutesToTime((displayEndHour * 60) + displayEndMinute),
-        title: weeklyPlanTitle,
-      };
-      localStorage.setItem('masterSchedule', JSON.stringify(newMasterSchedule));
-    }
-  }, [masterSchedule.shifts, displayStartHour, displayStartMinute, displayEndHour, displayEndMinute, weeklyPlanTitle, isDataLoaded]);
-
 
   // --- Group Management ---
   const handleAddGroup = () => {
@@ -2763,284 +2880,307 @@ function App() {
     setWeeklyPlanTitle(masterSchedule.title || 'Wochenplan');
   };
 
-  // --- Export Data Function ---
-  const handleExportData = () => {
+// Funktion zum Speichern von Daten in einer Datei
+  // NEU: 'showSuccessMessage' Parameter hinzugefügt, Standard ist true
+  const handleSaveFile = useCallback(async (currentHandle = fileHandle, showSuccessMessage = true) => {
+    console.log("handleSaveFile aufgerufen. Aktuelles Handle:", !!currentHandle);
+    if (!currentHandle) {
+      // Wenn kein Handle vorhanden ist, fragen Sie nach einem neuen Speicherort (Save As)
+      // Dies sollte bei Auto-Save nicht passieren, da wir nur speichern, wenn ein Handle existiert.
+      if (showSuccessMessage) { // Nur anzeigen, wenn nicht Auto-Save
+        setMessage('Keine Datei zum Speichern ausgewählt. Bitte speichern Sie die Datei manuell.');
+      }
+      return;
+    }
+
     try {
-      const dataToExport = {
+      console.log("Überprüfe Schreibberechtigung für Handle...");
+      const permissionStatus = await currentHandle.queryPermission({ mode: 'readwrite' });
+      console.log("Schreibberechtigungsstatus:", permissionStatus);
+
+      if (permissionStatus === 'prompt') {
+        console.log("Berechtigung 'prompt', fordere Berechtigung an.");
+        const result = await currentHandle.requestPermission({ mode: 'readwrite' });
+        if (result !== 'granted') {
+          setMessage('Schreibberechtigung für die Datei wurde verweigert.');
+          console.log("Schreibberechtigung verweigert.");
+          return;
+        }
+      } else if (permissionStatus === 'denied') {
+        setMessage('Schreibberechtigung für die Datei ist verweigert. Bitte wählen Sie eine neue Datei.');
+        setFileHandle(null);
+        await deleteFileHandleFromDb(); // Handle aus IndexedDB entfernen
+        console.log("Schreibberechtigung verweigert, Handle aus DB gelöscht.");
+        return;
+      }
+
+      const dataToSave = {
         groups: groups,
         employees: employees,
         categories: categories,
         subCategories: subCategories,
-        disposalTimeRules: disposalTimeRules, // New: export disposal rules
+        disposalTimeRules: disposalTimeRules,
         masterSchedule: masterSchedule,
-        orderedGroupIds: orderedGroupIds, // Export the group order
+        orderedGroupIds: orderedGroupIds,
       };
-      const jsonString = JSON.stringify(dataToExport, null, 2); // Pretty print JSON
+      const jsonString = JSON.stringify(dataToSave, null, 2);
 
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+      const writable = await currentHandle.createWritable();
+      await writable.write(jsonString);
+      await writable.close();
 
-      const a = document.createElement('a');
-      a.href = url;
+      await putFileHandleInDb(currentHandle);
+      console.log("FileHandle erfolgreich in IndexedDB gespeichert.");
 
-      // Generate filename based on weeklyPlanTitle, date, and time
-      const now = new Date();
-      const day = String(now.getDate()).padStart(2, '0');
-      const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
-      const year = now.getFullYear();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-
-      // Sanitize the weeklyPlanTitle for filename usage
-      const sanitizedTitle = weeklyPlanTitle
-        .replace(/[^a-zA-Z0-9\s-]/g, '') // Remove special characters except alphanumeric, spaces, hyphens
-        .replace(/\s+/g, '-') // Replace spaces with hyphens
-        .replace(/--+/g, '-') // Replace multiple hyphens with single hyphen
-        .trim(); // Trim leading/trailing hyphens/spaces
-
-      const filename = `${sanitizedTitle}_${day}.${month}.${year}_${hours}.${minutes}.json`;
-      a.download = filename;
-
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url); // Clean up the URL object
-
-      setMessage('Daten erfolgreich exportiert!');
+      // NEU: Zeige die Nachricht nur an, wenn showSuccessMessage true ist
+      if (showSuccessMessage) {
+        setMessage('Daten erfolgreich gespeichert!');
+      }
+      setFileHandle(currentHandle); // Stellen Sie sicher, dass das Handle gesetzt ist
     } catch (error) {
-      console.error("Fehler beim Exportieren der Daten:", error);
-      setMessage('Fehler beim Exportieren der Daten.');
+      console.error("Fehler beim Speichern der Datei:", error);
+      setMessage(`Fehler beim Speichern der Datei: ${error.message}`);
     }
-  };
+  }, [groups, employees, categories, subCategories, disposalTimeRules, masterSchedule, orderedGroupIds, fileHandle, setMessage]); // setMessage als Abhängigkeit hinzugefügt
 
-  // --- Import Data Function (now uses custom modal) ---
-  const handleImportData = (event) => {
-    const file = event.target.files[0];
-    if (!file) {
-      setMessage('Bitte eine Datei zum Importieren auswählen.');
+
+  // NEU: Funktion zum Speichern von Daten unter einem neuen Dateinamen (Export)
+  const handleSaveFileAs = useCallback(async () => {
+    if (!window.showSaveFilePicker) {
+      setMessage('Ihr Browser unterstützt die File System Access API nicht.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const importedData = JSON.parse(e.target.result);
-
-        // Basic validation of imported data structure
-        if (
-          !importedData.groups ||
-          !importedData.employees ||
-          !importedData.categories ||
-          !importedData.subCategories ||
-          !importedData.masterSchedule ||
-          !Array.isArray(importedData.groups) ||
-          !Array.isArray(importedData.employees) ||
-          !Array.isArray(importedData.categories) ||
-          !Array.isArray(importedData.subCategories) ||
-          !Array.isArray(importedData.masterSchedule.shifts) // masterSchedule.shifts should be an array
-        ) {
-          setMessage('Ungültiges Dateiformat. Die importierte Datei scheint kein gültiger Dienstplan-Export zu sein.');
-          // Clear the file input value to allow re-importing
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
-          return;
-        }
-
-        // Set up the confirmation modal
-        setConfirmModalMessage('Möchten Sie die aktuellen Daten wirklich durch die importierten Daten ersetzen? Dies kann nicht rückgängig gemacht werden.');
-        setConfirmModalAction(() => () => { // Wrap in an arrow function to delay execution
-          // This code runs if the user confirms
-          setGroups(importedData.groups.map(g => {
-            const groupWithInitializedHours = { ...g };
-            if (!groupWithInitializedHours.openingHours) {
-              groupWithInitializedHours.openingHours = {};
-            }
-            WEEK_DAYS_PLAN.forEach(day => {
-              if (!groupWithInitializedHours.openingHours[day]) {
-                groupWithInitializedHours.openingHours[day] = [];
-              }
-            });
-            groupWithInitializedHours.minStaffRequired = (g.minStaffRequired === undefined || g.minStaffRequired === null) ? undefined : g.minStaffRequired;
-            groupWithInitializedHours.disableStaffingWarning = g.disableStaffingWarning ?? true; // Default to true (warnings disabled)
-            if (typeof groupWithInitializedHours.daysWithOpeningHours !== 'object' || groupWithInitializedHours.daysWithOpeningHours === null) {
-                groupWithInitializedHours.daysWithOpeningHours = {};
-                WEEK_DAYS_PLAN.forEach(day => groupWithInitializedHours.daysWithOpeningHours[day] = false); // Default to false
-            } else {
-                WEEK_DAYS_PLAN.forEach(day => {
-                    if (groupWithInitializedHours.daysWithOpeningHours[day] === undefined) {
-                        groupWithInitializedHours.daysWithOpeningHours[day] = false;
-                    }
-                });
-            }
-            return groupWithInitializedHours;
-          }));
-          // Ensure overriddenDisposalHours, type, and presenceDays are correctly set on import
-          setEmployees(importedData.employees.map(emp => ({
-            ...emp,
-            overriddenDisposalHours: emp.overriddenDisposalHours ?? '',
-            type: emp.type ?? 'normal',
-            presenceDays: emp.presenceDays ?? [...WEEK_DAYS_PLAN],
-          })));
-          setCategories(importedData.categories.map(cat => ({
-            ...cat,
-            isDisposalTimeCategory: cat.isDisposalTimeCategory ?? false,
-            isCareCategory: cat.isCareCategory ?? false
-          })));
-          setSubCategories(importedData.subCategories);
-          setDisposalTimeRules(importedData.disposalTimeRules || []); // New: import disposal rules, default to empty array
-          setMasterSchedule(importedData.masterSchedule);
-          setOrderedGroupIds(importedData.orderedGroupIds || importedData.groups.map(g => g.id)); // Import order or derive
-
-          // --- Dynamic adjustment of display time range based on imported shifts ---
-          let minOverallMinutes = 24 * 60; // Initialize with max possible minutes (00:00)
-          let maxOverallMinutes = 0;      // Initialize with min possible minutes (00:00)
-          let hasShifts = false;
-
-          importedData.masterSchedule.shifts.forEach(shift => {
-            shift.segments.forEach(segment => {
-              const segmentStartMinutes = timeToMinutes(segment.startTime);
-              const segmentEndMinutes = timeToMinutes(segment.endTime);
-
-              minOverallMinutes = Math.min(minOverallMinutes, segmentStartMinutes);
-              maxOverallMinutes = Math.max(maxOverallMinutes, segmentEndMinutes);
-              hasShifts = true;
-            });
-          });
-
-          if (hasShifts) {
-            // No padding, just round to nearest 15 minutes
-            // Round down start time to the nearest 15 minutes
-            let newDisplayStartMinutes = Math.floor(minOverallMinutes / 15) * 15;
-            // Round up end time to the nearest 15 minutes
-            let newDisplayEndMinutes = Math.ceil(maxOverallMinutes / 15) * 15;
-
-            // Ensure end time is at least 15 minutes after start time if they become equal or inverted
-            if (newDisplayEndMinutes <= newDisplayStartMinutes) {
-                newDisplayEndMinutes = newDisplayStartMinutes + 15;
-            }
-
-            // Clip to 0:00 and 24:00 (if rounding pushes it out)
-            newDisplayStartMinutes = Math.max(0, newDisplayStartMinutes);
-            newDisplayEndMinutes = Math.min(24 * 60, newDisplayEndMinutes);
-
-
-            setDisplayStartHour(Math.floor(newDisplayStartMinutes / 60));
-            setDisplayStartMinute(newDisplayStartMinutes % 60);
-            setDisplayEndHour(Math.floor(newDisplayEndMinutes / 60));
-            setDisplayEndMinute(newDisplayEndMinutes % 60);
-          } else {
-            // If no shifts, revert to default display range
-            setDisplayStartHour(6);
-            setDisplayStartMinute(0);
-            setDisplayEndHour(18);
-            setDisplayEndMinute(0);
-          }
-
-          // Also update weekly plan title from imported schedule
-          setWeeklyPlanTitle(importedData.masterSchedule.title || 'Wochenplan');
-
-          // Save immediately to localStorage
-          localStorage.setItem('groups', JSON.stringify(importedData.groups.map(g => {
-            const groupWithInitializedHours = { ...g };
-            if (!groupWithInitializedHours.openingHours) {
-              groupWithInitializedHours.openingHours = {};
-            }
-            WEEK_DAYS_PLAN.forEach(day => {
-              if (!groupWithInitializedHours.openingHours[day]) {
-                groupWithInitializedHours.openingHours[day] = [];
-              }
-            });
-            groupWithInitializedHours.minStaffRequired = (g.minStaffRequired === undefined || g.minStaffRequired === null) ? undefined : g.minStaffRequired;
-            groupWithInitializedHours.disableStaffingWarning = g.disableStaffingWarning ?? true;
-            if (typeof groupWithInitializedHours.daysWithOpeningHours !== 'object' || groupWithInitializedHours.daysWithOpeningHours === null) {
-                groupWithInitializedHours.daysWithOpeningHours = {};
-                WEEK_DAYS_PLAN.forEach(day => groupWithInitializedHours.daysWithOpeningHours[day] = false);
-            } else {
-                WEEK_DAYS_PLAN.forEach(day => {
-                    if (groupWithInitializedHours.daysWithOpeningHours[day] === undefined) {
-                        groupWithInitializedHours.daysWithOpeningHours[day] = false;
-                    }
-                });
-            }
-            return groupWithInitializedHours;
-          })));
-          localStorage.setItem('employees', JSON.stringify(importedData.employees.map(emp => ({
-            ...emp,
-            overriddenDisposalHours: emp.overriddenDisposalHours ?? '',
-            type: emp.type ?? 'normal',
-            presenceDays: emp.presenceDays ?? [...WEEK_DAYS_PLAN],
-          }))));
-          localStorage.setItem('categories', JSON.stringify(importedData.categories.map(cat => ({
-            ...cat,
-            isDisposalTimeCategory: cat.isDisposalTimeCategory ?? false,
-            isCareCategory: cat.isCareCategory ?? false
-          }))));
-          localStorage.setItem('subCategories', JSON.stringify(importedData.subCategories));
-          localStorage.setItem('disposalTimeRules', JSON.stringify(importedData.disposalTimeRules || [])); // New: save disposal rules
-          localStorage.setItem('masterSchedule', JSON.stringify(importedData.masterSchedule));
-          localStorage.setItem('orderedGroupIds', JSON.stringify(importedData.orderedGroupIds || importedData.groups.map(g => g.id)));
-
-
-          setMessage('Daten erfolgreich importiert!');
-          setShowConfirmModal(false); // Close modal
-          // Clear the file input value to allow re-importing
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
-        });
-        setShowConfirmModal(true); // Show the modal
-
-      } catch (error) {
-        console.error("Fehler beim Importieren der Daten:", error);
-        setMessage('Fehler beim Importieren der Daten. Stellen Sie sicher, dass es sich um eine gültige JSON-Datei handelt.');
-        // Clear the file input value to allow re-importing
-        if (fileInputRef.current) {
-          fileInputRef.value = '';
-        }
+    try {
+      const newHandle = await window.showSaveFilePicker({
+        types: [{
+          description: 'Dienstplan Datei', // NEU: Klare Beschreibung
+          accept: { 'application/dienstplan+json': ['.dienstplan'] }, // NEU: Spezifischer MIME-Type und Endung
+        }],
+        suggestedName: `${weeklyPlanTitle.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-') || 'Dienstplan'}_${new Date().toISOString().slice(0, 10)}.dienstplan`, // NEU: Standard-Dateiendung
+      });
+      await handleSaveFile(newHandle); // Speichern mit dem neuen Handle
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        setMessage('Speichervorgang abgebrochen.');
+      } else {
+        console.error("Fehler beim Speichern der Datei unter neuem Namen:", error);
+        setMessage(`Fehler beim Speichern der Datei: ${error.message}`);
       }
-    };
-    reader.readAsText(file); // Read the file as text
-  };
+    }
+  }, [handleSaveFile, weeklyPlanTitle]);
 
-  // --- Clear All Data Function ---
-  const handleClearAllData = () => {
-    setConfirmModalMessage('ACHTUNG: Möchten Sie WIRKLICH alle Daten (Mitarbeiter, Gruppen, Kategorien, Dienstplan) löschen? Dies kann NICHT rückgängig gemacht werden.');
-    setConfirmModalAction(() => () => {
-      // Reset all states to their initial empty/default values
+
+// Funktion zum Öffnen einer Datei (Import)
+  const handleOpenFile = useCallback(async () => {
+    if (!window.showOpenFilePicker) {
+      setMessage('Ihr Browser unterstützt die File System Access API nicht.');
+      return;
+    }
+
+    try {
+      console.log("handleOpenFile aufgerufen. Öffne Dateiauswahl...");
+      const [newHandle] = await window.showOpenFilePicker({
+        types: [{
+          description: 'Dienstplan Export Datei', // NEU: Klare Beschreibung
+          accept: { 'application/wochenplan+json': ['.dienstplan'] }, // NEU: Spezifischer MIME-Type und Endung
+        }],
+        multiple: false,
+      });
+      console.log("Datei ausgewählt. Handle erhalten.");
+
+      const file = await newHandle.getFile();
+      const content = await file.text();
+      const importedData = JSON.parse(content);
+      console.log("Dateiinhalt erfolgreich gelesen und geparst.");
+
+      // Basic validation of imported data structure
+      if (
+        !importedData.groups ||
+        !importedData.employees ||
+        !importedData.categories ||
+        !importedData.subCategories ||
+        !importedData.masterSchedule ||
+        !Array.isArray(importedData.groups) ||
+        !Array.isArray(importedData.employees) ||
+        !Array.isArray(importedData.categories) ||
+        !Array.isArray(importedData.subCategories) ||
+        !Array.isArray(importedData.masterSchedule.shifts)
+      ) {
+        setMessage('Ungültiges Dateiformat. Die importierte Datei scheint kein gültiger Dienstplan-Export zu sein.');
+        console.warn("Importierte Datei hat ungültiges Format.");
+        return;
+      }
+
+      setConfirmModalMessage('Möchten Sie die aktuellen Daten wirklich durch die importierten Daten ersetzen? Dies kann nicht rückgängig gemacht werden.');
+      setConfirmModalAction(() => async () => { // Hinzugefügt: 'async' hier, da putFileHandleInDb async ist
+        // This code runs if the user confirms
+        setGroups(importedData.groups.map(g => {
+          const groupWithInitializedHours = { ...g };
+          if (!groupWithInitializedHours.openingHours) {
+            groupWithInitializedHours.openingHours = {};
+          }
+          WEEK_DAYS_PLAN.forEach(day => {
+            if (!groupWithInitializedHours.openingHours[day]) {
+              groupWithInitializedHours.openingHours[day] = [];
+            }
+          });
+          groupWithInitializedHours.minStaffRequired = (g.minStaffRequired === undefined || g.minStaffRequired === null) ? undefined : g.minStaffRequired;
+          groupWithInitializedHours.disableStaffingWarning = g.disableStaffingWarning ?? true;
+          if (typeof groupWithInitializedHours.daysWithOpeningHours !== 'object' || groupWithInitializedHours.daysWithOpeningHours === null) {
+              groupWithInitializedHours.daysWithOpeningHours = {};
+              WEEK_DAYS_PLAN.forEach(day => groupWithInitializedHours.daysWithOpeningHours[day] = false);
+          } else {
+              WEEK_DAYS_PLAN.forEach(day => {
+                  if (groupWithInitializedHours.daysWithOpeningHours[day] === undefined) {
+                      groupWithInitializedHours.daysWithOpeningHours[day] = false;
+                  }
+              });
+          }
+          return groupWithInitializedHours;
+        }));
+        setEmployees(importedData.employees.map(emp => ({
+          ...emp,
+          overriddenDisposalHours: emp.overriddenDisposalHours ?? '',
+          type: emp.type ?? 'normal',
+          presenceDays: emp.presenceDays ?? [...WEEK_DAYS_PLAN],
+        })));
+        setCategories(importedData.categories.map(cat => ({
+          ...cat,
+          isDisposalTimeCategory: cat.isDisposalTimeCategory ?? false,
+          isCareCategory: cat.isCareCategory ?? false
+        })));
+        setSubCategories(importedData.subCategories);
+        setDisposalTimeRules(importedData.disposalTimeRules || []);
+        setMasterSchedule(importedData.masterSchedule);
+        setOrderedGroupIds(importedData.orderedGroupIds || importedData.groups.map(g => g.id));
+
+        // Dynamic adjustment of display time range based on imported shifts
+        let minOverallMinutes = 24 * 60;
+        let maxOverallMinutes = 0;
+        let hasShifts = false;
+
+        importedData.masterSchedule.shifts.forEach(shift => {
+          shift.segments.forEach(segment => {
+            const segmentStartMinutes = timeToMinutes(segment.startTime);
+            const segmentEndMinutes = timeToMinutes(segment.endTime);
+
+            minOverallMinutes = Math.min(minOverallMinutes, segmentStartMinutes);
+            maxOverallMinutes = Math.max(maxOverallMinutes, segmentEndMinutes);
+            hasShifts = true;
+          });
+        });
+
+        if (hasShifts) {
+          let newDisplayStartMinutes = Math.floor(minOverallMinutes / 15) * 15;
+          let newDisplayEndMinutes = Math.ceil(maxOverallMinutes / 15) * 15;
+
+          if (newDisplayEndMinutes <= newDisplayStartMinutes) {
+              newDisplayEndMinutes = newDisplayStartMinutes + 15;
+          }
+
+          newDisplayStartMinutes = Math.max(0, newDisplayStartMinutes);
+          newDisplayEndMinutes = Math.min(24 * 60, newDisplayEndMinutes);
+
+          setDisplayStartHour(Math.floor(newDisplayStartMinutes / 60));
+          setDisplayStartMinute(newDisplayStartMinutes % 60);
+          setDisplayEndHour(Math.floor(newDisplayEndMinutes / 60));
+          setDisplayEndMinute(newDisplayEndMinutes % 60);
+        } else {
+          setDisplayStartHour(6);
+          setDisplayStartMinute(0);
+          setDisplayEndHour(18);
+          setDisplayEndMinute(0);
+        }
+
+        setWeeklyPlanTitle(importedData.masterSchedule.title || 'Wochenplan');
+        setFileHandle(newHandle); // Speichern Sie das neue Handle
+
+        // NEU: Speichere das FileHandle in IndexedDB
+        await putFileHandleInDb(newHandle);
+        console.log("Neues FileHandle erfolgreich in IndexedDB gespeichert nach Import.");
+
+        setMessage('Daten erfolgreich importiert!');
+        setShowConfirmModal(false);
+      });
+      setShowConfirmModal(true);
+
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        setMessage('Importvorgang abgebrochen.');
+        console.log("Importvorgang abgebrochen.");
+      } else {
+        console.error("Fehler beim Importieren der Daten:", error);
+        setMessage(`Fehler beim Importieren der Daten: ${error.message}. Stellen Sie sicher, dass es sich um eine gültige JSON-Datei handelt.`);
+      }
+    }
+  }, [setConfirmModalMessage, setConfirmModalAction, setGroups, setEmployees, setCategories, setSubCategories, setDisposalTimeRules, setMasterSchedule, setOrderedGroupIds, setDisplayStartHour, setDisplayStartMinute, setDisplayEndHour, setDisplayEndMinute, setWeeklyPlanTitle, setMessage, setShowConfirmModal]);
+
+
+// Aktualisieren Sie handleClearAllData, um auch das fileHandle zu löschen
+  const handleClearAllData = useCallback(() => {
+    setConfirmModalMessage('Möchten Sie, dass die App sich Ihre Daten nicht mehr merkt und mit einem leeren Plan startet? Die Daten werden NICHT aus der Speicherdatei auf Ihrem Computer gelöscht. Um die Daten dauerhaft zu entfernen, löschen Sie die Speicherdatei manuell von Ihrem Computer. Um die Daten wiederherzustellen, importieren Sie die Speicherdatei.');
+    setConfirmModalAction(() => async () => { // Hinzugefügt: 'async' hier
       setGroups([]);
       setEmployees([]);
       setCategories([]);
       setSubCategories([]);
-      setDisposalTimeRules([]); // New: clear disposal rules
+      setDisposalTimeRules([]);
       setMasterSchedule({ shifts: [], displayStartTime: '06:00', displayEndTime: '18:00', title: 'Wochenplan' });
-      setOrderedGroupIds([]); // Clear group order
-      setSelectedGroupIdFilter('all'); // Reset filter
+      setOrderedGroupIds([]);
+      setSelectedGroupIdFilter('all');
       setDisplayStartHour(6);
       setDisplayStartMinute(0);
       setDisplayEndHour(18);
       setDisplayEndMinute(0);
       setWeeklyPlanTitle('Wochenplan');
+      setFileHandle(null); // NEU: fileHandle löschen
 
-      // Clear all items from localStorage
-      localStorage.removeItem('groups');
-      localStorage.removeItem('employees');
-      localStorage.removeItem('categories');
-      localStorage.removeItem('subCategories');
-      localStorage.removeItem('disposalTimeRules'); // New: clear disposal rules from storage
-      localStorage.removeItem('masterSchedule');
-      localStorage.removeItem('orderedGroupIds'); // Clear group order from storage
-      localStorage.removeItem('lastShownAppVersion'); // Also clear the version flag if all data is cleared
+      // NEU: Lösche das FileHandle aus IndexedDB
+      await deleteFileHandleFromDb();
+      console.log("FileHandle erfolgreich aus IndexedDB gelöscht.");
 
       setMessage('Alle Daten erfolgreich gelöscht!');
       setShowConfirmModal(false);
     });
     setShowConfirmModal(true);
-  };
+  }, [setConfirmModalMessage, setConfirmModalAction, setGroups, setEmployees, setCategories, setSubCategories, setDisposalTimeRules, setMasterSchedule, setOrderedGroupIds, setSelectedGroupIdFilter, setDisplayStartHour, setDisplayStartMinute, setDisplayEndHour, setDisplayEndMinute, setWeeklyPlanTitle, setMessage, setShowConfirmModal]);
 
-  // NEU: Funktion zum Löschen nur des Wochenplans
+  // NEU: Auto-Save Effekt
+  useEffect(() => {
+    // Speichern nur, wenn der initiale Ladevorgang abgeschlossen ist UND ein FileHandle existiert
+    if (!isInitialLoadComplete || !fileHandle) {
+      console.log("Auto-Save übersprungen: Initialer Ladevorgang nicht abgeschlossen oder kein FileHandle.");
+      return;
+    }
+
+    // Debounce-Logik: Lösche vorherigen Timer und setze neuen
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    console.log("Änderung erkannt, setze Auto-Save Timer...");
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      console.log("Auto-Save Timer abgelaufen, führe Speicherung aus...");
+      // Rufe handleSaveFile auf, aber ohne Erfolgsmeldung (showSuccessMessage = false)
+      handleSaveFile(fileHandle, false);
+    }, 1000); // Speichert nach 1 Sekunde Inaktivität
+
+    // Cleanup-Funktion: Löscht den Timer, wenn die Komponente unmountet oder Abhängigkeiten sich ändern
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [
+    groups, employees, categories, subCategories, disposalTimeRules,
+    masterSchedule, orderedGroupIds, // Überwache alle relevanten Daten-States
+    fileHandle, isInitialLoadComplete, handleSaveFile // Abhängigkeiten für den Effekt
+  ]);
+
+// NEU: Funktion zum Löschen nur des Wochenplans
   const handleClearSchedule = useCallback(() => {
-    setConfirmModalMessage('Möchten Sie WIRKLICH nur den Wochenplan löschen? Mitarbeiter, Gruppen und Kategorien bleiben erhalten.');
+    setConfirmModalMessage('Möchtest du WIRKLICH den Wochenplan löschen? Mitarbeiter, Gruppen und Kategorien bleiben erhalten. Diese Aktion lässt sich NICHT rückgängig machen!');
     setConfirmModalAction(() => () => {
       // Setzt den Wochenplan auf den initialen leeren Zustand zurück
       const defaultSchedule = { shifts: [], displayStartTime: '06:00', displayEndTime: '18:00', title: 'Wochenplan' };
@@ -3051,8 +3191,9 @@ function App() {
       setDisplayEndMinute(0);
       setWeeklyPlanTitle('Wochenplan');
 
-      // Löscht NUR den Wochenplan aus localStorage
-      localStorage.removeItem('masterSchedule');
+      // Wichtig: Hier NICHT deleteFileHandleFromDb() aufrufen,
+      // da nur der Plan geleert wird, nicht die Datei.
+      // Die Änderungen werden erst beim nächsten "Speichern" in die Datei geschrieben.
 
       setMessage('Wochenplan erfolgreich gelöscht!');
       setShowConfirmModal(false);
@@ -3092,7 +3233,7 @@ function App() {
         .replace(/--+/g, '-')
         .trim();
 
-      const filename = `Wochenplan_${sanitizedTitle}_${day}.${month}.${year}_${hours}.${minutes}.json`;
+      const filename = `Wochenplan_${sanitizedTitle}_${day}.${month}.${year}_${hours}.${minutes}.wochenplan`; // NEU: Standard-Dateiendung
       a.download = filename;
 
       document.body.appendChild(a);
@@ -3109,7 +3250,7 @@ function App() {
   }, [masterSchedule, weeklyPlanTitle, setMessage]);
 
 
-  // NEU: Funktion zum Importieren nur des Wochenplans
+// NEU: Funktion zum Importieren nur des Wochenplans
   const handleImportSchedule = useCallback((event) => {
     const file = event.target.files[0];
     if (!file) {
@@ -3145,8 +3286,9 @@ function App() {
           setDisplayEndMinute(parseInt(importedEndTime.split(':')[1], 10));
           setWeeklyPlanTitle(importedData.masterSchedule.title || 'Wochenplan');
 
-          // Save immediately to localStorage
-          localStorage.setItem('masterSchedule', JSON.stringify(importedData.masterSchedule));
+          // Wichtig: Hier NICHT putFileHandleInDb() aufrufen,
+          // da nur der Plan importiert wird, nicht die Datei.
+          // Die Änderungen werden erst beim nächsten "Speichern" in die Hauptdatei geschrieben.
 
           setMessage('Wochenplan erfolgreich importiert!');
           setShowConfirmModal(false);
@@ -3371,29 +3513,27 @@ function App() {
             </div>
           )}
 
-          {/* --- Datenverwaltung Section (Renamed) --- */}
+         {/* --- Datenverwaltung Section (Renamed) --- */}
           <div className="mb-10 p-6 bg-gray-50 rounded-lg shadow-inner text-center w-full mx-auto data-management-buttons-container">
             <h2 className="text-2xl font-bold text-gray-700 mb-6 text-center">Datenverwaltung</h2>
             <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImportData}
-                accept=".json"
-                className="hidden" // Hide the default file input
-                id="importFile"
-              />
-              <label
-                htmlFor="importFile"
-                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 cursor-pointer"
-              >
-                Daten importieren (JSON)
-              </label>
               <button
-                onClick={handleExportData}
+                onClick={handleOpenFile} // Ruft die neue Funktion zum Öffnen auf
+                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
+              >
+                Daten importieren
+              </button>
+              <button
+                onClick={() => handleSaveFile(fileHandle, true)} // Explizit showSuccessMessage = true
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
+              >
+                Speichern
+              </button>
+              <button
+                onClick={handleSaveFileAs} // Ruft die Funktion zum Speichern unter auf (immer neues Handle)
                 className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
               >
-                Daten exportieren (JSON)
+                Daten exportieren
               </button>
               <button
                 onClick={handlePrint}
@@ -3402,10 +3542,10 @@ function App() {
                 Wochenplan drucken
               </button>
               <button
-                onClick={handleClearAllData} // New button for clearing all data
+                onClick={handleClearAllData}
                 className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
               >
-                Alle Daten löschen
+                Daten vergessen
               </button>
             </div>
           </div>
