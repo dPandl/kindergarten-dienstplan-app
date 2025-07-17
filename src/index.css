@@ -154,6 +154,12 @@ button:focus-visible {
     background-color: white !important; /* Ensure white background for print */
   }
 
+    /* NEU: Den animierten Gradienten beim Drucken entfernen */
+  .animated-gradient {
+    background: none !important; /* Entfernt jeglichen Hintergrund (Farbe, Bild, Gradient) */
+    animation: none !important; /* Stoppt die Animation */
+  }
+
   /* Elemente ausblenden, die nicht für den Druck benötigt werden */
   .header,
   .footer,
@@ -161,7 +167,8 @@ button:focus-visible {
   .sidebar,
   .management-sections-container, /* Container für alle Verwaltungsbereiche */
   .display-time-config, /* Zeitbereichs- und Filter-Einstellungen */
-  .weekly-plan-title-edit-button, /* Bearbeiten-Button für den Titel */
+  button[title="Wochenplan-Titel bearbeiten"],
+  button[title="Wochenplan verwalten"], /* KORRIGIERT: Verwendet das title-Attribut */
   .print-hidden-modal, /* Alle Modals, einschließlich des Druckoptions-Modals */
   .add-shift-button, /* Schicht hinzufügen Button */
   .message-alert, /* Nachrichten-/Warnbanner */
@@ -217,7 +224,7 @@ button:focus-visible {
   .master-weekly-plan-section h2 {
     display: block !important;
     font-size: 20pt !important; /* Adjust font size for print */
-    margin-bottom: 0mm !important; /* Add some space below title */
+    margin-bottom: -10mm !important; /* Add some space below title */
     color: #374151 !important; /* Ensure readable color */
     text-align: center !important; /* Center the title */
   }
@@ -289,10 +296,11 @@ button:focus-visible {
   /* Adjusted weekday headings (h4) for print */
   .weekly-plan-grid h4 {
     font-size: 9pt !important; /* Increased font size for weekday headings */
-    text-align: center !important; /* Centered weekday headings */
-    margin-top: 2mm !important; /* Adjusted margin */
+    text-align: left !important; /* Centered weekday headings */
+    margin-top: 0mm !important; /* Adjusted margin */
     margin-bottom: 0mm !important; /* Adjusted margin */
     padding-left: 0 !important; /* Removed padding */
+    transform: translateY(5mm) !important;
   }
 
   .timeline-row-container {
@@ -389,7 +397,7 @@ button:focus-visible {
     /* border-color: #aaa !important; <-- DIESE ZEILE WURDE ENTFERNT */
   }
   .shift-block span, .shift-block div {
-    font-size: 0.6rem !important; /* Angepasst: proportional kleiner */
+    font-size: 0.4rem !important; /* Angepasst: proportional kleiner */
     line-height: 1 !important;
     padding: 0 !important;
   }
@@ -466,4 +474,5 @@ button:focus-visible {
     margin: 0 !important; /* Kein Auto-Margin, da es 100% Breite hat */
     gap: 0 !important; /* Explizit keinen Spaltenabstand */
   }
+
 }

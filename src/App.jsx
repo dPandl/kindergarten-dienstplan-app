@@ -748,6 +748,17 @@ const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSc
 // --- Release Notes Data ---
 export const RELEASE_NOTES = [
   {
+    version: "1.0.6.1 (Beta)",
+    whatsNew: [
+    ],
+    bugFixes: [
+      "Die Buttons zum Bearbeiten des Wochenplantitels und zur Verwaltung des Wochenplans werden in der Druckansicht nicht mehr angezeigt.",
+    ],
+    adjustments: [
+      "Das Aussehen beim Drucken wurde leicht angepasst.",
+    ]
+  },
+  {
     version: "1.0.6 (Beta)",
     whatsNew: [
     ],
@@ -1161,7 +1172,7 @@ function App() {
   // IMPORTANT: Update this version string whenever you release a new version
   // for which you want to show the "What's New" popup.
   // Use a semantic versioning scheme (major.minor.patch) for easy comparison.
-  const CURRENT_APP_VERSION = "1.0.6 (Beta)"; // Updated version string
+  const CURRENT_APP_VERSION = "1.0.6.1 (Beta)"; // Updated version string
 
   const [message, setMessage] = useState('');
 
