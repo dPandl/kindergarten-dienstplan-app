@@ -2,6 +2,22 @@ import React, { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffe
 import { v4 as uuidv4 } from 'uuid'; // Import for generating unique IDs
 import { MessageSquare, AlertCircle, HelpCircle } from 'lucide-react';
 
+// Helper function to compare semantic versions (e.g., "1.0.0" vs "1.0.1")
+// Definiert außerhalb der Komponenten, damit sie überall genutzt werden kann
+const compareVersions = (version1, version2) => {
+  const cleanV1 = version1.replace(/\s*\(.*\)\s*$/, '');
+  const cleanV2 = version2.replace(/\s*\(.*\)\s*$/, '');
+  const parts1 = cleanV1.split('.').map(Number);
+  const parts2 = cleanV2.split('.').map(Number);
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const p1 = parts1[i] || 0;
+    const p2 = parts2[i] || 0;
+    if (p1 > p2) return 1;
+    if (p1 < p2) return -1;
+  }
+  return 0;
+};
+
 // --- IndexedDB Constants for File Handle Storage ---
 const DB_NAME = 'DienstplanAppDB';
 const STORE_NAME = 'fileHandles';
@@ -43,33 +59,33 @@ const getFileHandleFromDb = async (key = 'lastFile') => {
     };
 
     request.onerror = (event) => {
-      console.error("Error getting file handle from IndexedDB:", event.target.error);
+      console.error("IndexedDB get error:", event.target.error);
       reject(event.target.error);
     };
   });
 };
 
-// Helper function to put a file handle into IndexedDB
-const putFileHandleInDb = async (fileHandle, key = 'lastFile') => {
+// Helper function to save a file handle to IndexedDB
+const saveFileHandleToDb = async (handle, key = 'lastFile') => {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
-    const request = store.put(fileHandle, key);
+    const request = store.put(handle, key);
 
     request.onsuccess = () => {
       resolve();
     };
 
     request.onerror = (event) => {
-      console.error("Error putting file handle in IndexedDB:", event.target.error);
+      console.error("IndexedDB save error:", event.target.error);
       reject(event.target.error);
     };
   });
 };
 
-// Helper function to delete a file handle from IndexedDB
-const deleteFileHandleFromDb = async (key = 'lastFile') => {
+// Helper function to remove a file handle from IndexedDB
+const removeFileHandleFromDb = async (key = 'lastFile') => {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
@@ -81,11 +97,12 @@ const deleteFileHandleFromDb = async (key = 'lastFile') => {
     };
 
     request.onerror = (event) => {
-      console.error("Error deleting file handle from IndexedDB:", event.target.error);
+      console.error("IndexedDB delete error:", event.target.error);
       reject(event.target.error);
     };
   });
 };
+
 
 // Define the days of the week for the constant plan
 const WEEK_DAYS_PLAN = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'];
@@ -1040,7 +1057,9 @@ export const RELEASE_NOTES = [
 const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
   const [showHistory, setShowHistory] = useState(false);
 
+  // Finde die Notizen für die aktuelle Version
   const currentVersionNotes = releaseNotes.find(note => note.version === version);
+  // Filtert die Notizen, die nicht der aktuellen Version entsprechen, für den Verlauf
   const historicalNotes = releaseNotes.filter(note => note.version !== version);
 
   return (
@@ -1055,6 +1074,7 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
         </button>
 
         {!showHistory ? (
+          // Ansicht für die aktuelle neue Version
           <>
             {/* Bedingte Anzeige für den Haupt-Update-Titel */}
             {currentVersionNotes?.optionalTitle ? (
@@ -1073,7 +1093,7 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
             )}
 
             <p className="text-gray-700 mb-4">
-              Das sind die neuen Funktionen, Verbesserungen oder Fehlerbehebungen:
+              Willkommen zurück! Diese Version enthält wichtige Verbesserungen und neue Funktionen, um deine Planung noch effizienter zu gestalten.
             </p>
 
             {currentVersionNotes && currentVersionNotes.whatsNew.length > 0 && (
@@ -1127,27 +1147,12 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
             </div>
           </>
         ) : (
+          // Ansicht für den Updateverlauf
           <>
             <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">Updateverlauf</h3>
             <div className="space-y-6">
-              {releaseNotes.sort((a, b) => {
-                const compareVersions = (version1, version2) => {
-                  const cleanV1 = version1.replace(/\s*\(.*\)\s*$/, '');
-                  const cleanV2 = version2.replace(/\s*\(.*\)\s*$/, '');
-                  const parts1 = cleanV1.split('.').map(Number);
-                  const parts2 = cleanV2.split('.').map(Number);
-                  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-                    const p1 = parts1[i] || 0;
-                    const p2 = parts2[i] || 0;
-                    if (p1 > p2) return 1;
-                    if (p1 < p2) return -1;
-                  }
-                  return 0;
-                };
-                return compareVersions(b.version, a.version);
-              }).map((note, index) => (
+              {releaseNotes.sort((a, b) => compareVersions(b.version, a.version)).map((note, index) => (
                 <div key={index} className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
-                  {/* KORRIGIERT: Version und optionaler Titel getrennt und Größe angepasst */}
                   <h4 className="font-semibold text-xl text-gray-800 mb-0">
                     Version {note.version}
                   </h4>
@@ -1167,21 +1172,21 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
                         </ul>
                       </div>
                     )}
-                    {note.bugFixes.length > 0 && (
-                      <div>
-                        <p className="font-semibold text-base text-gray-700 mt-4">Bugfixes:</p>
-                        <ul className="list-disc list-outside pl-5 space-y-1">
-                          {note.bugFixes.map((item, i) => (
-                            <li key={i} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
                     {note.adjustments.length > 0 && (
                       <div>
                         <p className="font-semibold text-base text-gray-700 mt-4">Anpassungen:</p>
                         <ul className="list-disc list-outside pl-5 space-y-1">
                           {note.adjustments.map((item, i) => (
+                            <li key={i} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {note.bugFixes.length > 0 && (
+                      <div>
+                        <p className="font-semibold text-base text-gray-700 mt-4">Fehlerbehebungen:</p>
+                        <ul className="list-disc list-outside pl-5 space-y-1">
+                          {note.bugFixes.map((item, i) => (
                             <li key={i} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
                           ))}
                         </ul>
@@ -1194,9 +1199,15 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
             <div className="flex justify-center mt-6">
               <button
                 onClick={() => setShowHistory(false)}
+                className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out mr-4"
+              >
+                Zurück
+              </button>
+              <button
+                onClick={onClose}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
               >
-                Zurück zum aktuellen Update
+                Schließen
               </button>
             </div>
           </>
@@ -1205,6 +1216,7 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
     </div>
   );
 };
+
 
 
 // New component: OpeningHoursEditor - DEFINED DIRECTLY IN APP.JSX
@@ -2000,20 +2012,12 @@ function App() {
 
   // Initiales Laden der Daten und Versionsprüfung
   useEffect(() => {
-    // Helper function to compare semantic versions (e.g., "1.0.0" vs "1.0.1")
-    const compareVersions = (v1, v2) => {
-      const cleanV1 = v1.replace(/\s*\(.*\)\s*$/, '');
-      const cleanV2 = v2.replace(/\s*\(.*\)\s*$/, '');
-      const parts1 = cleanV1.split('.').map(Number);
-      const parts2 = cleanV2.split('.').map(Number);
-      for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-        const p1 = parts1[i] || 0;
-        const p2 = parts2[i] || 0;
-        if (p1 > p2) return 1;
-        if (p1 < p2) return -1;
-      }
-      return 0;
-    };
+
+    // Versionsprüfung (unabhängig vom Datenladen)
+    const lastShownAppVersion = localStorage.getItem('lastShownAppVersion');
+    if (!lastShownAppVersion || compareVersions(CURRENT_APP_VERSION, lastShownAppVersion) > 0) {
+      setShowNewVersionPopup(true);
+    }
 
     const loadInitialData = async () => {
       console.log("App startet: Versuche initiale Daten zu laden...");
@@ -2168,7 +2172,6 @@ function App() {
         const lastShownAppVersion = localStorage.getItem('lastShownAppVersion');
         if (!lastShownAppVersion || compareVersions(CURRENT_APP_VERSION, lastShownAppVersion) > 0) {
           setShowNewVersionPopup(true);
-          localStorage.setItem('lastShownAppVersion', CURRENT_APP_VERSION);
         }
 
       } catch (error) {
@@ -5413,7 +5416,11 @@ function App() {
             {showNewVersionPopup && (
               <NewVersionPopup
                 version={CURRENT_APP_VERSION}
-                onClose={() => setShowNewVersionPopup(false)}
+                onClose={() => {
+                  setShowNewVersionPopup(false);
+                  // Korrektur: Verwende den gleichen Schlüssel wie beim Lesen im useEffect
+                  localStorage.setItem('lastShownAppVersion', CURRENT_APP_VERSION);
+                }}
                 releaseNotes={RELEASE_NOTES}
               />
             )}
