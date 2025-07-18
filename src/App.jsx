@@ -66,7 +66,7 @@ const getFileHandleFromDb = async (key = 'lastFile') => {
 };
 
 // Helper function to save a file handle to IndexedDB
-const saveFileHandleToDb = async (handle, key = 'lastFile') => {
+const putFileHandleInDb = async (handle, key = 'lastFile') => {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
