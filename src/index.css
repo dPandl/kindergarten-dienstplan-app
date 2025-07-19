@@ -200,8 +200,8 @@ button:focus-visible {
     display: none !important;
   }
 
-  /* 3. Symbol mit dem roten Ausrufezeichen (AlertCircle) - if it were present, this would hide it */
-  .summary-cell .absolute.bottom-1.right-1.cursor-pointer {
+  /* 3. Symbol mit dem roten Ausrufezeichen (AlertCircle) - KORRIGIERT */
+  .summary-cell .absolute[class*="cursor-pointer"] {
     display: none !important;
   }
 
@@ -398,7 +398,7 @@ button:focus-visible {
     /* border-color: #aaa !important; <-- DIESE ZEILE WURDE ENTFERNT */
   }
   .shift-block span, .shift-block div {
-    font-size: 0.4rem !important; /* Angepasst: proportional kleiner */
+    font-size: 6pt !important; /* Angepasst: proportional kleiner */
     line-height: 1 !important;
     padding: 0 !important;
   }

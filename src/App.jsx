@@ -142,6 +142,44 @@ const minutesToTime = (totalMinutes) => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 };
 
+// Helper function to validate time format (e.g., "07:30")
+const isValidTime = (time) => {
+  const regex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  return regex.test(time);
+};
+
+// Helper function to check if a given time (HH:MM) falls within any of the provided ranges
+const isTimeInRanges = (time, ranges) => {
+  if (!time || !ranges || ranges.length === 0) {
+    return false;
+  }
+
+  const [currentHour, currentMinute] = time.split(':').map(Number);
+  const currentTimeInMinutes = currentHour * 60 + currentMinute;
+
+  for (const range of ranges) {
+    const [startHour, startMinute] = range.start.split(':').map(Number);
+    const [endHour, endMinute] = range.end.split(':').map(Number);
+
+    let startTimeInMinutes = startHour * 60 + startMinute;
+    let endTimeInMinutes = endHour * 60 + endMinute;
+
+    // Handle overnight ranges (e.g., 22:00 - 06:00)
+    if (endTimeInMinutes < startTimeInMinutes) {
+      // If the time is after start and before midnight, OR after midnight and before end
+      if (currentTimeInMinutes >= startTimeInMinutes || currentTimeInMinutes < endTimeInMinutes) {
+        return true;
+      }
+    } else {
+      // Normal range
+      if (currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < endTimeInMinutes) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
 // Helper function to merge overlapping or adjacent time ranges
 const mergeTimeRanges = (ranges) => {
   if (ranges.length === 0) {
@@ -251,6 +289,19 @@ const checkGroupStaffingWarnings = (
           }
       } else {
           minStaffInSegment = 0;
+      }
+
+      // NEU: Prüfung der Randzeiten für den spezifischen Tag
+      const currentTimeHHMM = minutesToTime(currentMinute);
+      if (group.edgeTimes?.[dayOfWeek] && isTimeInRanges(currentTimeHHMM, group.edgeTimes[dayOfWeek])) {
+          // Wenn wir in einer Randzeit sind, beende den aktuellen Warnungsbereich (falls vorhanden)
+          // und überspringe die weitere Prüfung für diese Minute.
+          if (currentWarningStart !== -1) {
+              staffingWarningRanges.push({ startMinutes: currentWarningStart, endMinutes: currentMinute });
+              textWarnings.push(`weniger als ${minStaffRequired} in Betreuung (${minutesToTime(currentWarningStart)}-${minutesToTime(currentMinute)})`);
+              currentWarningStart = -1;
+          }
+          continue; // Überspringe den Rest der Schleife für diese Minute
       }
 
       if (minStaffInSegment < minStaffRequired) {
@@ -693,13 +744,13 @@ const PrintOptionsModal = ({
         <div className="flex justify-center gap-4">
           <button
             onClick={handlePrintClick}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg shadow-md transition duration-300 ease-in-out"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
           >
             Drucken
           </button>
           <button
             onClick={onCancel}
-            className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg shadow-md transition duration-300 ease-in-out"
+            className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
           >
             Abbrechen
           </button>
@@ -815,6 +866,7 @@ const HelpModal = ({ onClose }) => {
               <ul className="list-disc list-outside pl-5 space-y-1">
                 <li className="pl-1"><strong>Gruppe hinzufügen:</strong> Gib einen Namen ein und wähle eine Farbe, die im Wochenplan und bei den Mitarbeitern angezeigt wird.</li>
                 <li className="pl-1"><strong>Öffnungszeiten festlegen:</strong> Für jede Gruppe kannst du die täglichen Öffnungszeiten definieren. Dies ist entscheidend für die <strong>Betreuungswarnungen</strong>. Du kannst mehrere Zeitbereiche pro Tag hinzufügen und Tage aktivieren/deaktivieren.</li>
+                <li className="pl-1"><strong>Randzeiten definieren</strong>: Lege Zeiten fest, in denen die Betreuungswarnungen für diese Gruppe ignoriert werden. Dies ist nützlich für Übergangszeiten oder spezielle Situationen, in denen die Mindestbesetzung kurzzeitig unterschritten werden darf.</li>
                 <li className="pl-1"><strong>Min. Betreuungspersonal:</strong> Lege fest, wie viele Mitarbeiter gleichzeitig in der als "Betreuungskategorie" markierten Kategorie anwesend sein müssen.</li>
                 <li className="pl-1"><strong>Betreuungswarnungen:</strong> Du kannst Warnungen für jede Gruppe individuell aktivieren oder deaktivieren.</li>
                 <li className="pl-1"><strong>Reihenfolge ändern:</strong> Ziehe vorhandene Gruppen in der Liste per Drag & Drop, um ihre Anzeigereihenfolge im Wochenplan zu ändern.</li>
@@ -947,8 +999,24 @@ const HelpModal = ({ onClose }) => {
 // --- Release Notes Data ---
 export const RELEASE_NOTES = [
   {
+    version: "Beta 1.8.0",
+    optionalTitle: "Am Rande der Zeit",
+    whatsNew: [
+      "<strong>Randzeiten:</strong> <br />Unter <strong>Öffnungszeiten festlegen</strong> in <strong>Gruppen verwalten</strong> kannst du jetzt Randzeiten definieren. Für Randzeiten werden die Betreuungswarnungen unterdrückt.",
+    ],
+    bugFixes: [
+      "Öffnungszeiten-Texte in <strong>Vorhandene Gruppen</strong> verursachen keine fehlerhafte Anordnung der Buttons mehr.",
+      "Das Warnsymbol für Arbeitszeitverletzungen in der Tagesübersicht wird in der Druckansicht nun korrekt ausgeblendet.",
+    ],
+    adjustments: [
+      "Die Buttons in der Datenverwaltung werden nun konsistent in der selben Größe dargestellt.",
+      "Beim Export des Wochenplans wird nun ein Fenster zum Auswählen des Speicherorts angezeigt.",
+      "Kleine Schichtblöcke stellen nun die Zeit in Minuten und gedreht dar. Das sorgt für eine kompaktere und übersichtlichere Anzeige und macht kleine Blöcke auch beim Druck lesbar.",
+    ]
+  },
+  {
     version: "Beta 1.7.0",
-    optionalTitle: "Erklärbär-Update", // NEU: Optionaler Titel
+    optionalTitle: "Erklärbär-Update",
     whatsNew: [
       "Ein neuer <strong>Hilfe-Button</strong> ist jetzt oben rechts neben dem 'Fehler melden'-Button verfügbar. Klicke darauf, um die neue <strong>Anleitung</strong> zu öffnen.",
     ],
@@ -972,7 +1040,7 @@ export const RELEASE_NOTES = [
   },
   {
     version: "Beta 1.6.0",
-    optionalTitle: "Speicher-Update", // NEU: Optionaler Titel
+    optionalTitle: "Speicher-Update",
     whatsNew: [
     ],
     bugFixes: [
@@ -1021,7 +1089,7 @@ export const RELEASE_NOTES = [
   },
   {
     version: "Beta 1.2.0",
-    optionalTitle: "Gruppen & Warnungen Update", // NEU: Optionaler Titel
+    optionalTitle: "Gruppen & Warnungen Update",
     whatsNew: [
       "Unter 'Mitarbeiter verwalten' können Mitarbeiter als <strong>Zusatzkräfte</strong> angegeben werden. Zusatzkräfte werden unter 'normale Mitarbeiter', aber über 'Praktikanten', 'FSJler' und 'Auszubildende' sortiert.",
       "In 'Gruppen verwalten' können nun <strong>Öffnungszeiten der Gruppen</strong> angegeben werden. Außerdem kann dort angegeben werden wie viele Mitarbeiter mindestens in der Betreuung sein sollen. Im Wochenplan wird dann eine Warnung angezeigt wenn diese Regel nicht erfüllt ist. Die Anzeige von Warnungen ist nur möglich wenn in Kategorien verwalten ein Block mit der Checkbox 'Als Betreuungskategorie verwenden' markiert wurde.",
@@ -1034,7 +1102,7 @@ export const RELEASE_NOTES = [
   },
   {
     version: "Beta 1.1.0",
-    optionalTitle: "Erster Beta Release des Dienstplaners", // NEU: Optionaler Titel
+    optionalTitle: "Erster Beta Release des Dienstplaners",
     whatsNew: [
       "<strong>Individuelle Verfügbarkeiten</strong> für deine Mitarbeiter: Im Bereich 'Mitarbeiter verwalten' kannst du jetzt spezifische Verfügbarkeitszeiten für einzelne Mitarbeiter festlegen. Diese individuellen Einstellungen überschreiben die allgemeingültige 'Verfügbarkeitszeit-Regel' und ermöglichen dir eine präzisere und bedarfsgerechtere Planung.",
       "<strong>Erweiterte Mitarbeiterrollen und intelligente Arbeitszeitprüfung:</strong> Lege deine Mitarbeiter detailliert als normale Mitarbeiter, FSJler, Auszubildende oder Praktikanten fest. Für FSJler, Auszubildende und Praktikanten kannst du zudem die spezifischen Tage definieren, an denen sie in deiner Einrichtung anwesend sind. Im Wochenplan werden Schulzeiten dieser Mitarbeiter visuell heller dargestellt, um deren Abwesenheit klar zu kennzeichnen. Zusätzlich erhältst du in der Wochenübersicht eine Benachrichtigung, wenn die Anwesenheitstage von FSJlern, Auszubildenden oder Praktikanten zu viel oder zu wenig Arbeitszeit aufweisen.",
@@ -1224,6 +1292,64 @@ const OpeningHoursEditor = ({ group, onUpdateGroup }) => {
   // KEINE Imports hier, da WEEK_DAYS_PLAN, timeToMinutes, minutesToTime global in App.jsx verfügbar sind
   // oder von App.jsx selbst importiert werden.
 
+  // NEU: useState für die temporäre Eingabe einer neuen Randzeit (bleibt global für die Komponente)
+  const [newEdgeTime, setNewEdgeTime] = useState({ start: '', end: '' });
+
+  // NEU: handleAddEdgeTime Funktion (muss den 'day' erhalten)
+  const handleAddEdgeTime = (day) => {
+    const currentEdgeTimes = group.edgeTimes?.[day] || [];
+
+    // Falls keine Öffnungszeiten gesetzt sind, Standardwert nehmen
+    const openingRanges = group.openingHours?.[day] || [];
+    let newStart = '08:00';
+    let newEnd = '08:30';
+
+    if (openingRanges.length > 0) {
+      // Ersten Öffnungsbereich nehmen
+      const firstOpening = openingRanges[0];
+      newStart = firstOpening.start;
+
+      // Ende = Start + 30 Minuten
+      const startMinutes = timeToMinutes(firstOpening.start);
+      const endMinutes = startMinutes + 30;
+      newEnd = minutesToTime(endMinutes);
+    }
+
+    const newRange = { start: newStart, end: newEnd };
+
+    onUpdateGroup({
+      ...group,
+      edgeTimes: {
+        ...group.edgeTimes,
+        [day]: [...currentEdgeTimes, newRange],
+      },
+    });
+  };
+
+  const handleEdgeTimeChange = (day, index, field, value) => {
+    const newEdgeTimes = [...(group.edgeTimes?.[day] || [])];
+    newEdgeTimes[index] = { ...newEdgeTimes[index], [field]: value };
+    onUpdateGroup({
+      ...group,
+      edgeTimes: {
+        ...group.edgeTimes,
+        [day]: newEdgeTimes,
+      },
+    });
+  };
+
+
+  // NEU: handleRemoveEdgeTime Funktion (muss den 'day' und den 'index' erhalten)
+  const handleRemoveEdgeTime = (day, indexToRemove) => {
+    onUpdateGroup(prevGroup => ({
+      ...prevGroup,
+      edgeTimes: {
+        ...(prevGroup.edgeTimes || initialEdgeTimesTemplate),
+        [day]: (prevGroup.edgeTimes?.[day] || []).filter((_, index) => index !== indexToRemove), // Randzeit vom spezifischen Tag entfernen
+      },
+    }));
+  };
+
   const handleDayToggle = (dayToToggle, checked) => {
     const updatedDaysWithOpeningHours = {
       ...group.daysWithOpeningHours,
@@ -1317,47 +1443,55 @@ const OpeningHoursEditor = ({ group, onUpdateGroup }) => {
   };
 
   const handleApplyMondayToAllWeek = () => {
-    const mondayHours = group.openingHours?.['Montag'] || [];
-    const mondayEnabled = group.daysWithOpeningHours?.['Montag'] ?? false; // Default to false for initial state
+    const mondayOpeningHours = group.openingHours['Montag'] || [];
+    const mondayDaysWithOpeningHours = group.daysWithOpeningHours['Montag'] ?? false;
+    const mondayEdgeTimes = group.edgeTimes?.['Montag'] || []; // NEU: Montags Randzeiten holen
 
-    const updatedOpeningHours = { ...group.openingHours };
-    const updatedDaysWithOpeningHours = { ...group.daysWithOpeningHours };
+    onUpdateGroup(prevGroup => {
+      const updatedOpeningHours = { ...prevGroup.openingHours };
+      const updatedDaysWithOpeningHours = { ...prevGroup.daysWithOpeningHours };
+      const updatedEdgeTimes = { ...(prevGroup.edgeTimes || initialEdgeTimesTemplate) }; // NEU: Initialisieren, falls nicht vorhanden
 
-    WEEK_DAYS_PLAN.forEach(day => {
-      if (day !== 'Montag') {
-        updatedOpeningHours[day] = [...mondayHours]; // Deep copy
-        updatedDaysWithOpeningHours[day] = mondayEnabled;
-      }
-    });
-
-    onUpdateGroup({
-      ...group,
-      openingHours: updatedOpeningHours,
-      daysWithOpeningHours: updatedDaysWithOpeningHours,
+      WEEK_DAYS_PLAN.forEach(dayOfWeek => { // Umbenannt, um Konflikt mit 'day' im äußeren Scope zu vermeiden
+        if (dayOfWeek !== 'Montag') {
+          updatedOpeningHours[dayOfWeek] = [...mondayOpeningHours];
+          updatedDaysWithOpeningHours[dayOfWeek] = mondayDaysWithOpeningHours;
+          updatedEdgeTimes[dayOfWeek] = [...mondayEdgeTimes]; // NEU: Montags Randzeiten auf andere Tage anwenden
+        }
+      });
+      return {
+        ...prevGroup,
+        openingHours: updatedOpeningHours,
+        daysWithOpeningHours: updatedDaysWithOpeningHours,
+        edgeTimes: updatedEdgeTimes, // NEU: Aktualisierte Randzeiten zurückgeben
+      };
     });
   };
 
-
-  const handleClearDay = (dayToClear) => {
-    onUpdateGroup({
-      ...group,
+  const handleClearDay = (day) => {
+    onUpdateGroup(prevGroup => ({
+      ...prevGroup,
       openingHours: {
-        ...group.openingHours,
-        [dayToClear]: [],
+        ...prevGroup.openingHours,
+        [day]: [],
       },
       daysWithOpeningHours: {
-        ...group.daysWithOpeningHours,
-        [dayToClear]: false, // Disable the day when clearing times
+        ...prevGroup.daysWithOpeningHours,
+        [day]: false,
       },
-    });
+      edgeTimes: { // NEU: Randzeiten für diesen Tag löschen
+        ...(prevGroup.edgeTimes || initialEdgeTimesTemplate),
+        [day]: [],
+      }
+    }));
   };
 
-  return (
+ return (
     <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-200 mt-6">
       <div className="space-y-4"> {/* Container for all weekdays */}
         {WEEK_DAYS_PLAN.map(day => {
           const currentDayHours = group.openingHours?.[day] || [];
-          const isDayEnabled = group.daysWithOpeningHours?.[day] ?? false; // Default to false
+          const isDayEnabled = group.daysWithOpeningHours?.[day] ?? false;
 
           return (
             <div key={day} className="p-4 border border-gray-200 rounded-lg bg-gray-50 shadow-sm">
@@ -1373,17 +1507,17 @@ const OpeningHoursEditor = ({ group, onUpdateGroup }) => {
                   <span className="text-lg font-semibold text-gray-800">{day}</span>
                 </label>
                 <div className="flex gap-2">
-                  {day === 'Montag' && ( // Only show on Monday
+                  {day === 'Montag' && (
                     <button
                       onClick={handleApplyMondayToAllWeek}
-                      className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm py-2 px-4 rounded-lg shadow-md transition duration-200"
+                      className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
                     >
                       Auf ganze Woche anwenden
                     </button>
                   )}
                   <button
                     onClick={() => handleClearDay(day)}
-                    className="bg-red-500 hover:bg-red-600 text-white text-sm py-2 px-4 rounded-lg shadow-md transition duration-200"
+                    className="bg-red-500 hover:bg-red-600 text-white text-sm py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
                   >
                     Zeiten löschen
                   </button>
@@ -1415,7 +1549,7 @@ const OpeningHoursEditor = ({ group, onUpdateGroup }) => {
                           />
                           <button
                             onClick={() => handleRemoveTimeRange(day, index)}
-                            className="text-red-600 hover:text-red-800 p-1 rounded-full"
+                            className="text-red-600 hover:text-red-800 p-1 rounded-full transition duration-200 ease-in-out transform hover:scale-105"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                           </button>
@@ -1425,10 +1559,56 @@ const OpeningHoursEditor = ({ group, onUpdateGroup }) => {
                   )}
                   <button
                     onClick={() => handleAddTimeRange(day)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-4 rounded-lg shadow-md transition duration-200"
+                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 mr-2" // mr-2 für Abstand zum neuen Button
                   >
                     + Zeitbereich hinzufügen
                   </button>
+
+                  {/* NEU: Randzeiten-Sektion pro Tag */}
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <label className="block text-blue-800 text-sm font-bold mb-2">Randzeiten für {day}</label>
+                    <p className="text-blue-700 text-xs mb-2">
+                      Warnungen zu geringer Personalbesetzung werden während dieser Zeiten nicht angezeigt.
+                    </p>
+
+                    {/* Randzeiten-Liste (editierbar) */}
+                    <div className="mb-2">
+                      {(group.edgeTimes?.[day] && group.edgeTimes[day].length > 0) ? (
+                        group.edgeTimes[day].map((range, index) => (
+                          <div key={index} className="flex items-center gap-2 mb-1">
+                            <input
+                              type="time"
+                              value={range.start}
+                              onChange={(e) => handleEdgeTimeChange(day, index, 'start', e.target.value)}
+                              className="p-2 border border-gray-300 rounded-md w-28"
+                            />
+                            <span>-</span>
+                            <input
+                              type="time"
+                              value={range.end}
+                              onChange={(e) => handleEdgeTimeChange(day, index, 'end', e.target.value)}
+                              className="p-2 border border-gray-300 rounded-md w-28"
+                            />
+                            <button
+                              onClick={() => handleRemoveEdgeTime(day, index)}
+                              className="text-red-600 hover:text-red-800 p-1 rounded-full transition duration-200 ease-in-out transform hover:scale-105"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-blue-600 text-sm">Noch keine Randzeiten für {day} festgelegt.</p>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => handleAddEdgeTime(day)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white text-sm py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 mr-2"
+                    >
+                      + Randzeit hinzufügen
+                    </button>
+                  </div>
                 </>
               )}
             </div>
@@ -1444,7 +1624,7 @@ function App() {
   // IMPORTANT: Update this version string whenever you release a new version
   // for which you want to show the "What's New" popup.
   // Use a semantic versioning scheme (major.minor.patch) for easy comparison.
-  const CURRENT_APP_VERSION = "Beta 1.7.0"; // Updated version string
+  const CURRENT_APP_VERSION = "Beta 1.8.0"; // Updated version string
 
   const [message, setMessage] = useState('');
 
@@ -1474,6 +1654,12 @@ function App() {
     initialDaysWithOpeningHoursTemplate[day] = false; // All days disabled by default
   });
 
+    // Randzeiten intitialisieren
+    const initialEdgeTimesTemplate = WEEK_DAYS_PLAN.reduce((acc, day) => {
+    acc[day] = [];
+    return acc;
+  }, {});
+
   // Group States
   const [groups, setGroups] = useState([]);
   const [newGroup, setNewGroup] = useState({
@@ -1483,13 +1669,13 @@ function App() {
     daysWithOpeningHours: initialDaysWithOpeningHoursTemplate,
     minStaffRequired: undefined, // Default to undefined
     disableStaffingWarning: true, // Default to true (checkbox unchecked)
+    edgeTimes: initialEdgeTimesTemplate,
   });
   const [editingGroupId, setEditingGroupId] = useState(null);
   const [editingGroup, setEditingGroup] = useState(null); // Store the entire group object being edited
   const [orderedGroupIds, setOrderedGroupIds] = useState([]); // New state for group display order
   const [isGroupsSectionMinimized, setIsGroupsSectionMinimized] = useState(true); // Changed to true for default minimized
   const [isGroupOpeningHoursMinimized, setIsGroupOpeningHoursMinimized] = useState(true); // Changed to true for default minimized
-
 
   // Removed selectedDayForOpeningHours as it's no longer needed for the UI display logic
 
@@ -2225,16 +2411,17 @@ function App() {
     const initialEditedDaysWithOpeningHours = {};
     WEEK_DAYS_PLAN.forEach(day => {
       initialEditedOpeningHours[day] = group.openingHours?.[day] || [];
-      initialEditedDaysWithOpeningHours[day] = group.daysWithOpeningHours?.[day] ?? false; // Default to false
+      initialEditedDaysWithOpeningHours[day] = group.daysWithOpeningHours?.[day] ?? false;
     });
     setEditingGroup({
       ...group,
       openingHours: initialEditedOpeningHours,
       daysWithOpeningHours: initialEditedDaysWithOpeningHours,
-      minStaffRequired: group.minStaffRequired ?? undefined, // Ensure undefined if not set
-      disableStaffingWarning: group.disableStaffingWarning ?? true, // Ensure true if not set
+      minStaffRequired: group.minStaffRequired ?? undefined,
+      disableStaffingWarning: group.disableStaffingWarning ?? true,
+      edgeTimes: group.edgeTimes ?? initialEdgeTimesTemplate, // NEU: edgeTimes aus Gruppe übernehmen oder initialisieren
     });
-    setIsGroupOpeningHoursMinimized(false); // Open the section when editing
+    setIsGroupOpeningHoursMinimized(false);
   };
 
   const handleUpdateGroup = () => {
@@ -3229,7 +3416,7 @@ function App() {
   }, [groups, employees, categories, subCategories, disposalTimeRules, masterSchedule, orderedGroupIds, fileHandle, setMessage]); // setMessage als Abhängigkeit hinzugefügt
 
 
-  // NEU: Funktion zum Speichern von Daten unter einem neuen Dateinamen (Export)
+  // Funktion zum Speichern von Daten unter einem neuen Dateinamen (Export)
   const handleSaveFileAs = useCallback(async () => {
     if (!window.showSaveFilePicker) {
       setMessage('Ihr Browser unterstützt die File System Access API nicht.');
@@ -3237,12 +3424,30 @@ function App() {
     }
 
     try {
+      // NEU: Dateinamenslogik von handleExportSchedule hierher kopiert
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+      const year = now.getFullYear();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+
+      // Sanitize the weeklyPlanTitle for filename usage
+      const sanitizedTitle = weeklyPlanTitle
+        .replace(/[^a-zA-Z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/--+/g, '-')
+        .trim();
+
+      // Konstruiere den vorgeschlagenen Dateinamen
+      const suggestedFilename = `${sanitizedTitle}_${day}.${month}.${year}_${hours}.${minutes}.dienstplan`; // Angepasste Endung
+
       const newHandle = await window.showSaveFilePicker({
         types: [{
-          description: 'Dienstplan Datei', // NEU: Klare Beschreibung
-          accept: { 'application/dienstplan+json': ['.dienstplan'] }, // NEU: Spezifischer MIME-Type und Endung
+          description: 'Dienstplan Datei',
+          accept: { 'application/dienstplan+json': ['.dienstplan'] },
         }],
-        suggestedName: `${weeklyPlanTitle.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-') || 'Dienstplan'}_${new Date().toISOString().slice(0, 10)}.dienstplan`, // NEU: Standard-Dateiendung
+        suggestedName: suggestedFilename, // Verwende den neu generierten Dateinamen
       });
       await handleSaveFile(newHandle); // Speichern mit dem neuen Handle
     } catch (error) {
@@ -3253,7 +3458,7 @@ function App() {
         setMessage(`Fehler beim Speichern der Datei: ${error.message}`);
       }
     }
-  }, [handleSaveFile, weeklyPlanTitle]);
+  }, [handleSaveFile, weeklyPlanTitle]); // weeklyPlanTitle als Abhängigkeit hinzugefügt
 
 
 // Funktion zum Öffnen einer Datei (Import)
@@ -3488,8 +3693,8 @@ function App() {
   }, [setMessage, setMasterSchedule, setDisplayStartHour, setDisplayStartMinute, setDisplayEndHour, setDisplayEndMinute, setWeeklyPlanTitle]);
 
 
-  // NEU: Funktion zum Exportieren nur des Wochenplans
-  const handleExportSchedule = useCallback(() => {
+// NEU: Funktion zum Exportieren nur des Wochenplans
+  const handleExportSchedule = useCallback(async () => { // Hinzugefügt: async
     try {
       const dataToExport = {
         masterSchedule: masterSchedule,
@@ -3497,13 +3702,6 @@ function App() {
       };
       const jsonString = JSON.stringify(dataToExport, null, 2); // Pretty print JSON
 
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement('a');
-      a.href = url;
-
-      // Generiere Dateinamen basierend auf weeklyPlanTitle, Datum und Uhrzeit
       const now = new Date();
       const day = String(now.getDate()).padStart(2, '0');
       const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
@@ -3518,7 +3716,43 @@ function App() {
         .replace(/--+/g, '-')
         .trim();
 
-      const filename = `Wochenplan_${sanitizedTitle}_${day}.${month}.${year}_${hours}.${minutes}.wochenplan`; // NEU: Standard-Dateiendung
+      const filename = `${sanitizedTitle}_${day}.${month}.${year}_${hours}.${minutes}.wochenplan`;
+
+      // NEU: Logik für Ordnerauswahl mit showSaveFilePicker
+      if (window.showSaveFilePicker) { // Prüfen, ob die API unterstützt wird
+        try {
+          const newHandle = await window.showSaveFilePicker({ // Benutzer wählt Speicherort
+            types: [{
+              description: 'Wochenplan Datei',
+              accept: { 'application/wochenplan+json': ['.wochenplan'] }, // Angepasster MIME-Type und Endung
+            }],
+            suggestedName: filename, // Vorgeschlagener Dateiname
+          });
+
+          const writable = await newHandle.createWritable();
+          await writable.write(jsonString);
+          await writable.close();
+
+          setMessage(`Wochenplan erfolgreich in "${filename}" gespeichert.`);
+          setShowScheduleManagementModal(false); // Modal schließen
+          return; // Beende die Funktion hier, wenn erfolgreich
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            setMessage('Speichervorgang abgebrochen.');
+          } else {
+            console.error("Fehler beim Speichern der Datei:", error);
+            setMessage(`Fehler beim Speichern des Wochenplans: ${error.message}. Versuche Standard-Download.`);
+            // Fällt hier durch zur alten Download-Methode, wenn ein Fehler auftritt
+          }
+        }
+      }
+
+      // Fallback: Standard-Download-Link, falls showSaveFilePicker nicht verfügbar ist oder fehlschlägt
+      const blob = new Blob([jsonString], { type: 'application/wochenplan+json' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
       a.download = filename;
 
       document.body.appendChild(a);
@@ -3526,13 +3760,13 @@ function App() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url); // Clean up the URL object
 
-      setMessage('Wochenplan erfolgreich exportiert!');
+      setMessage(`Wochenplan "${filename}" erfolgreich heruntergeladen.`);
       setShowScheduleManagementModal(false); // Modal schließen
     } catch (error) {
       console.error("Fehler beim Exportieren des Wochenplans:", error);
       setMessage('Fehler beim Exportieren des Wochenplans.');
     }
-  }, [masterSchedule, weeklyPlanTitle, setMessage]);
+  }, [masterSchedule, weeklyPlanTitle, setMessage]); // Abhängigkeiten für useMemo
 
 
 // NEU: Funktion zum Importieren nur des Wochenplans
@@ -3771,6 +4005,7 @@ function App() {
             onClick={() => setShowNewVersionPopup(true)} // Added onClick handler
           >
             Version {CURRENT_APP_VERSION}
+            <span className="block">Made with ❤️ by Pascal</span>
           </div>
 
           {/* NEU: Hilfe-Button (links vom Feedback-Button) */}
@@ -3813,34 +4048,34 @@ function App() {
          {/* --- Datenverwaltung Section (Renamed) --- */}
           <div className="mb-10 p-6 bg-gray-50 rounded-lg shadow-inner text-center w-full mx-auto data-management-buttons-container">
             <h2 className="text-2xl font-bold text-gray-700 mb-6 text-center">Datenverwaltung</h2>
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+            <div className="flex flex-wrap justify-center gap-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-inner mb-4 print-hidden-element items-stretch">
               <button
                 onClick={handleOpenFile} // Ruft die neue Funktion zum Öffnen auf
-                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
+                className="bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
               >
                 Daten importieren
               </button>
               <button
                 onClick={() => handleSaveFile(fileHandle, true)} // Explizit showSuccessMessage = true
-                className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
+                className="bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
               >
                 Speichern
               </button>
               <button
                 onClick={handleSaveFileAs} // Ruft die Funktion zum Speichern unter auf (immer neues Handle)
-                className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
+                className="bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
               >
                 Daten exportieren
               </button>
               <button
                 onClick={handlePrint}
-                className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 print-button"
+                className="bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 print-button"
               >
                 Wochenplan drucken
               </button>
               <button
                 onClick={handleClearAllData}
-                className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
+                className="bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
               >
                 Daten vergessen
               </button>
@@ -3918,13 +4153,13 @@ function App() {
                       <>
                         <button
                           onClick={handleUpdateGroup}
-                          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out"
+                          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
                         >
                           Speichern
                         </button>
                         <button
                           onClick={handleCancelEditGroup}
-                          className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out"
+                          className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg shadow-md transition transition duration-300 ease-in-out transform hover:scale-105"
                         >
                           Abbrechen
                         </button>
@@ -4007,31 +4242,33 @@ function App() {
                               onDragEnd={handleGroupDragEnd}
                               className="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm border border-gray-200 cursor-grab group-item-draggable"
                             >
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-grow min-w-0">
                                 <span className={`w-6 h-6 rounded-full ${getStrongGroupColor(group.color)} border border-gray-300`}></span>
-                                <div className="flex flex-col">
+                                {/* NEU: max-w-[70%] hinzugefügt, um den Textumbruch zu erzwingen */}
+                                <div className="flex flex-col max-w-[70%]">
                                   <span className="text-gray-900 font-medium">{group.name}</span>
-                                  <span className="text-gray-600 text-xs mt-1">Öffnungszeiten: {openingHoursSummary}</span>
+                                  {/* break-words bleibt, um lange Zeitangaben zu brechen */}
+                                  <span className="text-gray-600 text-xs mt-1 break-words">Öffnungszeiten: {openingHoursSummary}</span>
                                   <span className="text-gray-600 text-xs mt-1">
                                     Min. Betreuung: {group.minStaffRequired !== undefined ? group.minStaffRequired : "nicht festgelegt"}
                                     {group.disableStaffingWarning ? " (Warnung deaktiviert)" : " (Warnung aktiv)"}
                                   </span>
                                 </div>
                               </div>
-                              <div>
-                                <button
-                                  onClick={() => handleEditGroupClick(group)}
-                                  className="text-indigo-600 hover:text-indigo-800 mr-3 text-sm"
-                                >
-                                  Bearbeiten
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteGroup(group.id)}
-                                  className="text-red-600 hover:text-red-800 text-sm"
-                                >
-                                  Löschen
-                                </button>
-                              </div>
+                                <div className="flex flex-row items-center flex-shrink-0 gap-2">
+                                  <button
+                                    onClick={() => handleEditGroupClick(group)}
+                                    className="text-indigo-600 hover:text-indigo-800 text-sm" // Removed mr-3, gap handles spacing
+                                  >
+                                    Bearbeiten
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteGroup(group.id)}
+                                    className="text-red-600 hover:text-red-800 text-sm"
+                                  >
+                                    Löschen
+                                  </button>
+                                </div>
                             </li>
                           );
                         })}
@@ -4963,6 +5200,10 @@ function App() {
 
                                                                 const currentBlockWidth = blockObservedWidths[blockKey] || 0;
 
+                                                                // NEU: Dauer in Minuten berechnen (falls noch nicht vorhanden)
+                                                                const durationMinutes = timeToMinutes(segment.endTime) - timeToMinutes(segment.startTime);
+                                                                const formattedDuration = `${durationMinutes}min`;
+
                                                                 let displayedCategoryText = blockCategoryName;
                                                                 let timeStringStart = segment.startTime;
                                                                 let timeStringEnd = segment.endTime;
@@ -4971,28 +5212,32 @@ function App() {
                                                                 let showTime = true;
                                                                 let showCategory = true;
                                                                 let isTimeVertical = false;
+                                                                let isTimeRotated90Deg = false; // NEU: Flag für 90-Grad-Rotation
+                                                                let displayedTimeText = ''; // KORREKTUR: displayedTimeText initialisieren
 
                                                                 if (currentBlockWidth < 20) {
                                                                     showCategory = false;
                                                                     showTime = false;
-                                                                } else if (currentBlockWidth < 40) {
-                                                                    displayedCategoryText = blockCategoryName.charAt(0);
-                                                                    categoryTextSizeClass = 'text-[0.6rem]';
-                                                                    showTime = false;
-                                                                    showCategory = true;
-                                                                } else if (currentBlockWidth < 70) {
+                                                                    displayedTimeText = ''; // KORREKTUR: Auch hier setzen
+                                                                } else if (currentBlockWidth < 40) { // Dieser Block ist jetzt für die GEDREHTE DAUER
+                                                                    showCategory = false;       // Kategorie ausblenden
+                                                                    showTime = true;            // Zeit anzeigen
+                                                                    isTimeRotated90Deg = true;  // NEU: 90-Grad-Rotation aktivieren
+                                                                    displayedTimeText = formattedDuration; // KORREKTUR: Dauer (z.B. "15min") anzeigen
+                                                                } else if (currentBlockWidth < 90) { // Dies ist der BESTEHENDE VERTIKALE Modus
                                                                     showCategory = false;
                                                                     timeTextSizeClass = 'text-[0.6rem]';
                                                                     showTime = true;
-                                                                    isTimeVertical = true;
-                                                                } else {
+                                                                    isTimeVertical = true;      // BESTEHEND: Vertikale Anzeige aktivieren
+                                                                    displayedTimeText = `${timeStringStart}-${timeStringEnd}`; // KORREKTUR: Start-End-Zeit für vertikal
+                                                                } else { // Dies ist der BESTEHENDE HORIZONTALE Modus
                                                                     categoryTextSizeClass = 'text-sm';
                                                                     timeTextSizeClass = 'text-xs';
                                                                     showCategory = true;
                                                                     showTime = true;
                                                                     isTimeVertical = false;
+                                                                    displayedTimeText = `${timeStringStart}-${timeStringEnd}`; // KORREKTUR: Start-End-Zeit für horizontal
                                                                 }
-
 
                                                                 return (
                                                                     <div
@@ -5024,14 +5269,35 @@ function App() {
                                                                             </span>
                                                                         )}
                                                                         {showTime && (
+                                                                            // Überprüfe zuerst auf die neue 90-Grad-Rotation
+                                                                            isTimeRotated90Deg ? (
+                                                                                <span
+                                                                                    className={`${timeTextSizeClass} leading-tight text-center px-1 absolute`}
+                                                                                    style={{
+                                                                                      position: 'absolute', // Wichtig: Damit das span im shift-block platziert werden kann
+                                                                                      top: 0,               // Macht das span so hoch wie den shift-block
+                                                                                      bottom: 0,            // Macht das span so hoch wie den shift-block
+                                                                                      left: 0,              // Macht das span so breit wie den shift-block
+                                                                                      right: 0,             // Macht das span so breit wie den shift-block
+                                                                                      display: 'flex',      // Aktiviert Flexbox für die Zentrierung des Textes
+                                                                                      alignItems: 'center', // Zentriert den Text vertikal im span
+                                                                                      justifyContent: 'center', // Zentriert den Text horizontal im span
+                                                                                      transform: 'rotate(270deg)', // Nur die Rotation auf das gesamte zentrierte span anwenden
+                                                                                      whiteSpace: 'nowrap', // Verhindert Zeilenumbrüche im Text
+                                                                                      // font-size wird bereits über timeTextSizeClass gesetzt
+                                                                                  }}
+                                                                                >
+                                                                                    {displayedTimeText}
+                                                                                </span>
+                                                                            ) : // Wenn nicht 90-Grad gedreht, dann überprüfe auf die bestehende vertikale Anzeige
                                                                             isTimeVertical ? (
                                                                                 <div className={`flex flex-col items-center ${timeTextSizeClass} leading-tight text-center px-1`}>
                                                                                     <span>{timeStringStart}</span>
                                                                                     <span>{timeStringEnd}</span>
                                                                                 </div>
-                                                                            ) : (
+                                                                            ) : ( // Ansonsten, die horizontale Standardanzeige
                                                                                 <span className={`${timeTextSizeClass} leading-tight text-center whitespace-nowrap px-1`}>
-                                                                                    {timeStringStart}-{timeStringEnd}
+                                                                                    {displayedTimeText}
                                                                                 </span>
                                                                             )
                                                                         )}
