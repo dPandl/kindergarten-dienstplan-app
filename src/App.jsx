@@ -1012,6 +1012,7 @@ export const RELEASE_NOTES = [
       "Die Buttons in der Datenverwaltung werden nun konsistent in der selben Größe dargestellt.",
       "Beim Export des Wochenplans wird nun ein Fenster zum Auswählen des Speicherorts angezeigt.",
       "Kleine Schichtblöcke stellen nun die Zeit in Minuten und gedreht dar. Das sorgt für eine kompaktere und übersichtlichere Anzeige und macht kleine Blöcke auch beim Druck lesbar.",
+      "Generelle Anpassungen der Textdarstellung in Schichtblöcken um diese lesbarer zu machen.",
     ]
   },
   {
@@ -5224,9 +5225,8 @@ function App() {
                                                                     showTime = true;            // Zeit anzeigen
                                                                     isTimeRotated90Deg = true;  // NEU: 90-Grad-Rotation aktivieren
                                                                     displayedTimeText = formattedDuration; // KORREKTUR: Dauer (z.B. "15min") anzeigen
-                                                                } else if (currentBlockWidth < 90) { // Dies ist der BESTEHENDE VERTIKALE Modus
+                                                                } else if (currentBlockWidth < 150) { // Dies ist der BESTEHENDE VERTIKALE Modus
                                                                     showCategory = false;
-                                                                    timeTextSizeClass = 'text-[0.6rem]';
                                                                     showTime = true;
                                                                     isTimeVertical = true;      // BESTEHEND: Vertikale Anzeige aktivieren
                                                                     displayedTimeText = `${timeStringStart}-${timeStringEnd}`; // KORREKTUR: Start-End-Zeit für vertikal
