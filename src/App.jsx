@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid'; // Import for generating unique IDs
 import { MessageSquare, AlertCircle, HelpCircle } from 'lucide-react';
+import FeedbackModal from './components/FeedbackModal'; // Passe den Pfad an, falls du einen anderen Unterordner gewählt hast
 
 // Helper function to compare semantic versions (e.g., "1.0.0" vs "1.0.1")
 // Definiert außerhalb der Komponenten, damit sie überall genutzt werden kann
@@ -632,22 +633,62 @@ const ColorPickerDropdown = ({ selectedColor, onColorChange, colors, placeholder
 
 // --- Confirm Modal Component ---
 const ConfirmModal = ({ message, onConfirm, onCancel }) => {
+  // State, der die Sichtbarkeit und damit die Animation des Modals steuert.
+  const [isVisible, setIsVisible] = useState(false);
+
+  // useEffect Hook, der beim Mounten der Komponente (einmalig) ausgeführt wird.
+  // Er setzt isVisible auf true, um die Fade-In-Animation zu starten.
+  // setTimeout(0) stellt sicher, dass der DOM zuerst gerendert wird,
+  // bevor die CSS-Transition ausgelöst wird.
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      setIsVisible(true); // Trigger für den Fade-In
+    }, 0);
+    // Cleanup-Funktion, um den Timer zu löschen, falls die Komponente unmounted wird,
+    // bevor der Timeout abläuft.
+    return () => clearTimeout(timerId);
+  }, []); // Leeres Abhängigkeits-Array bedeutet, der Effekt läuft nur einmal nach dem initialen Rendern.
+
+  // Handler-Funktion zum Schließen des Modals mit Fade-Out
+  // Diese Funktion wird von den Buttons aufgerufen und kümmert sich um die Animation
+  // und das anschließende Aufrufen der übergebenen Callback-Funktion.
+  const handleActionClick = (actionCallback) => {
+    setIsVisible(false); // Trigger für den Fade-Out
+    // Warte, bis die CSS-Transition abgeschlossen ist (300ms), bevor die Callback-Funktion aufgerufen wird.
+    setTimeout(() => {
+      actionCallback(); // Rufe die übergebene Funktion auf
+    }, 300); // Wichtig: Diese Dauer muss mit der CSS-Transition-Dauer übereinstimmen (z.B. duration-300).
+  };
+
   return (
-    // NEU: z-[100] hinzugefügt, um sicherzustellen, dass es über anderen Modals liegt
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-[100] p-4">
-      <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full transform transition-all duration-300 scale-100">
-        <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">Bestätigung</h3>
-        <p className="text-gray-700 mb-6 text-center">{message}</p>
+    // Äußerer div: Steuert Opazität und Positionierung
+    // Die 'transition-opacity' Klasse sorgt für den Fade-In/Out-Effekt des Overlays.
+    // 'opacity-100' oder 'opacity-0' wird basierend auf dem isVisible-State gesetzt.
+    <div className={`fixed inset-0 bg-gray-300 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out
+      ${isVisible ? 'opacity-100' : 'opacity-0'}
+      z-[25] // Der z-index, der funktioniert hat, um über dem ScheduleManagementModal zu liegen
+    `}>
+      {/* Innerer div: Modal-Inhalt mit Skalierungs-Animation */}
+      {/* Die 'transition-transform' Klasse sorgt für den Skalierungs-Effekt. */}
+      {/* 'scale-100' oder 'scale-95' wird basierend auf dem isVisible-State gesetzt. */}
+      <div className={`bg-white rounded-lg shadow-xl p-6 max-w-sm w-full relative
+        transform transition-all duration-300 ease-in-out
+        ${isVisible ? 'scale-100' : 'scale-95'}
+      `}>
+        <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">! Achtung !</h3>
+
+        <p className="text-gray-700 text-center mb-6">{message}</p>
+
         <div className="flex justify-center gap-4">
           <button
-            onClick={onConfirm}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-5 rounded-lg shadow-md transition duration-300 ease-in-out"
+            onClick={() => handleActionClick(onConfirm)}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-5 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
           >
             Bestätigen
           </button>
           <button
-            onClick={onCancel}
-            className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg shadow-md transition duration-300 ease-in-out"
+            onClick={() => handleActionClick(onCancel)}
+            className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
           >
             Abbrechen
           </button>
@@ -665,32 +706,48 @@ const PrintOptionsModal = ({
   onPrintWeeklySummaryChange,
   selectedGroupIdFilter,
   setSelectedGroupIdFilter,
-  groups, // Diese Prop wird weiterhin benötigt, um die Namen der Gruppen anzuzeigen
+  groups,
   hasEmployeesWithoutGroup,
   selectedEmployeeIdFilter,
   setSelectedEmployeeIdFilter,
   availableEmployeesForFilter,
-  // NEUE PROP:
-  filteredGroupsForDisplayInFilter // Die gefilterte Liste der Gruppen für das Dropdown
+  filteredGroupsForDisplayInFilter
 }) => {
   const [printWeeklySummary, setPrintWeeklySummary] = useState(defaultPrintWeeklySummary);
+  const [isVisible, setIsVisible] = useState(false); // Steuert die Fade-In/Out-Animation des GESAMTEN Modals
 
-  const handlePrintClick = () => {
-    onPrint(printWeeklySummary);
+  // Effekt für initialen Fade-In des gesamten Modals beim Mounten
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      setIsVisible(true); // Trigger für den Fade-In
+    }, 0);
+    return () => clearTimeout(timerId);
+  }, []);
+
+  // Handler für 'Abbrechen' und 'Drucken' Buttons
+  const handleActionClick = (actionCallback) => {
+    setIsVisible(false); // Startet die Fade-Out-Animation für das gesamte Modal (inkl. Hintergrund)
+    setTimeout(() => {
+      actionCallback(printWeeklySummary);
+    }, 300); // Wartezeit für die Fade-Out-Transition (muss zu 'duration-300' passen)
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4 print-hidden-modal">
-      <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full transform transition-all duration-300 scale-100">
-        <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">Druckoptionen</h3>
+    // Äußerster div: Steuert die Opazität des GESAMTEN Modals (inkl. Blur-Hintergrund)
+    // HIER IST DIE KORREKTUR: backdrop-blur-md und bg-opacity-50 sind wieder direkt hier
+    <div className={`fixed inset-0 bg-gray-300 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 print-hidden-modal
+      transition-opacity duration-300 ease-in-out // Wende Transition auf Opazität an
+      ${isVisible ? 'opacity-100' : 'opacity-0'} // Steuere Opazität basierend auf isVisible
+    `}>
+      {/* Der separate div für den Blur ist ENTFERNT, da der Blur direkt auf dem äußeren div liegt */}
 
-        {/* Hinweis entfernt, da die Funktionalität jetzt vorhanden ist */}
-        {/*
-        <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 mb-4" role="alert">
-          <p className="font-bold">Hinweis:</p>
-          <p>Druckoption noch nicht final. Experimentiere mit der Skalierung im Druckenfenster herum um mehr/weniger Seiten zu verwenden.</p>
-        </div>
-        */}
+      {/* Innerer div (der eigentliche Modal-Inhalt) */}
+      {/* Dieser Container erhält die Skalierungs-Animation und liegt über dem Hintergrund */}
+      <div className={`bg-white rounded-lg shadow-xl p-6 max-w-sm w-full relative
+        transform transition-all duration-300 ease-in-out
+        ${isVisible ? 'scale-100' : 'scale-95'}
+      `}>
+        <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">Druckoptionen</h3>
 
         {/* Gruppenfilter (bestehend) */}
         <div className="mb-4">
@@ -703,14 +760,13 @@ const PrintOptionsModal = ({
             value={selectedGroupIdFilter}
             onChange={(e) => setSelectedGroupIdFilter(e.target.value)}
           >
-            {/* Verwenden Sie die neue gefilterte Liste für die Optionen */}
             {filteredGroupsForDisplayInFilter.map(group => (
               <option key={group.id} value={group.id}>{group.name}</option>
             ))}
           </select>
         </div>
 
-        {/* NEU: Mitarbeiterfilter im Druckmodal */}
+        {/* Mitarbeiterfilter im Druckmodal */}
         <div className="mb-4">
           <label htmlFor="printEmployeeFilter" className="block text-sm font-medium text-gray-700 mb-1">
             Mitarbeiter filtern:
@@ -718,8 +774,8 @@ const PrintOptionsModal = ({
           <select
             id="printEmployeeFilter"
             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-            value={selectedEmployeeIdFilter} // Bindet an den übergebenen Mitarbeiterfilter-State
-            onChange={(e) => setSelectedEmployeeIdFilter(e.target.value)} // Aktualisiert den Mitarbeiterfilter-State
+            value={selectedEmployeeIdFilter}
+            onChange={(e) => setSelectedEmployeeIdFilter(e.target.value)}
           >
             <option value="all">Alle Mitarbeiter</option>
             {availableEmployeesForFilter.map(employee => (
@@ -737,19 +793,19 @@ const PrintOptionsModal = ({
               setPrintWeeklySummary(e.target.checked);
               onPrintWeeklySummaryChange(e.target.checked);
             }}
-            className="form-checkbox h-5 w-5 text-blue-600 rounded"
+            className="form-checkbox h-5 w-5 text-blue-600 rounded cursor-pointer"
           />
           <label htmlFor="printWeeklySummary" className="ml-3 text-gray-700">Wochenübersicht mitdrucken</label>
         </div>
         <div className="flex justify-center gap-4">
           <button
-            onClick={handlePrintClick}
+            onClick={() => handleActionClick(onPrint)}
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
           >
             Drucken
           </button>
           <button
-            onClick={onCancel}
+            onClick={() => handleActionClick(onCancel)}
             className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105"
           >
             Abbrechen
@@ -760,16 +816,54 @@ const PrintOptionsModal = ({
   );
 };
 
+
 // --- NEUE: Schedule Management Modal Component ---
+// onClearSchedule wird wieder als separate Prop übergeben
 const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSchedule, onCancel, fileInputRef }) => {
+  // State, der die Sichtbarkeit und damit die Animation des Modals steuert.
+  const [isVisible, setIsVisible] = useState(false);
+
+  // useEffect Hook, der beim Mounten der Komponente (einmalig) ausgeführt wird.
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      setIsVisible(true); // Trigger für den Fade-In
+    }, 0);
+    return () => clearTimeout(timerId);
+  }, []);
+
+  // Handler-Funktion zum Schließen des Modals mit Fade-Out
+  // Diese Funktion wird für Export, Import und Abbrechen verwendet.
+  const handleCloseAndAction = (actionCallback, ...args) => {
+    setIsVisible(false); // Trigger für den Fade-Out dieses Modals
+    setTimeout(() => {
+      actionCallback(...args); // Rufe die übergebene Funktion mit ihren Argumenten auf
+    }, 300); // Wichtig: Diese Dauer muss mit der CSS-Transition-Dauer übereinstimmen (z.B. duration-300).
+  };
+
+  // Spezieller onChange-Handler für den Datei-Input, da er ein Event-Objekt übergibt
+  // Auch hier wird das Modal ausgeblendet, da der Import danach abgeschlossen ist.
+  const handleImportChange = (event) => {
+    setIsVisible(false); // Trigger für den Fade-Out
+    setTimeout(() => {
+      onImportSchedule(event); // Rufe die Import-Funktion mit dem Event auf
+    }, 300);
+  };
+
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4 print-hidden-modal">
-      <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full transform transition-all duration-300 scale-100">
+    <div className={`fixed inset-0 bg-gray-300 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 print-hidden-modal
+      transition-opacity duration-300 ease-in-out
+      ${isVisible ? 'opacity-100' : 'opacity-0'}
+      z-[20]
+    `}>
+      <div className={`bg-white rounded-lg shadow-xl p-6 max-w-sm w-full relative
+        transform transition-all duration-300 ease-in-out
+        ${isVisible ? 'scale-100' : 'scale-95'}
+      `}>
         <h3 className="text-xl font-semibold text-gray-800 mb-6 text-center">Wochenplan verwalten</h3>
 
         <div className="flex flex-col gap-4">
           <button
-            onClick={onExportSchedule}
+            onClick={onExportSchedule} // Export ruft onExportSchedule direkt auf (schließt sich in App.jsx)
             className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
           >
             Wochenplan exportieren
@@ -777,11 +871,11 @@ const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSc
 
           <input
             type="file"
-            ref={fileInputRef} // Hier den Ref übergeben
-            onChange={onImportSchedule}
-            accept=".wochenplan" // NEU: Nur .wochenplan Dateien akzeptieren
+            ref={fileInputRef}
+            onChange={handleImportChange} // Import ruft handleImportChange auf (schließt sich hier)
+            accept=".wochenplan"
             className="hidden"
-            id="importScheduleFileModal" // Eindeutige ID für dieses Modal
+            id="importScheduleFileModal"
           />
           <label
             htmlFor="importScheduleFileModal"
@@ -791,7 +885,7 @@ const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSc
           </label>
 
           <button
-            onClick={onClearSchedule}
+            onClick={onClearSchedule} // KORREKTUR: onClearSchedule direkt aufrufen, OHNE handleCloseAndAction
             className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
           >
             Wochenplan löschen
@@ -800,7 +894,7 @@ const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSc
 
         <div className="mt-6 flex justify-center">
           <button
-            onClick={onCancel}
+            onClick={() => handleCloseAndAction(onCancel)} // Abbrechen ruft handleCloseAndAction auf (schließt sich hier)
             className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
           >
             Abbrechen
@@ -811,13 +905,51 @@ const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSc
   );
 };
 
+
 // --- NEUE: Help Modal Component ---
+// Der 'animate'-Prop wird nicht mehr benötigt
 const HelpModal = ({ onClose }) => {
+  // NEU: Interner State, um die Sichtbarkeit des Modals für die Animation zu steuern
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  // useEffect, um die Animation beim Mounten zu triggern
+  useEffect(() => {
+    // KORREKTUR: Verwende setTimeout(0) anstelle von requestAnimationFrame.
+    // Dies stellt sicher, dass das Element im DOM ist und seine initialen Klassen hat,
+    // bevor die Animation ausgelöst wird.
+    const timerId = setTimeout(() => {
+      setIsModalVisible(true); // Trigger für den Fade-In
+    }, 0); // Kurze Verzögerung von 0ms (schiebt in den nächsten Event-Loop-Zyklus)
+
+    // Cleanup-Funktion: Stellt sicher, dass der Timer gelöscht wird,
+    // wenn die Komponente unmounted oder der Effekt erneut ausgeführt wird.
+    return () => clearTimeout(timerId);
+  }, []); // Leeres Abhängigkeits-Array: wird nur einmal beim Mounten ausgeführt
+
+  // Handler für den Schließen-Button
+  const handleCloseClick = () => {
+    setIsModalVisible(false); // Trigger für den Fade-Out
+    // Warte, bis die CSS-Transition abgeschlossen ist (300ms), bevor das Modal unmounted wird.
+    setTimeout(() => {
+      onClose(); // Rufe die onClose-Funktion der Elternkomponente auf
+    }, 300); // Diese Dauer muss zur 'duration-300' in den CSS-Klassen passen
+  };
+
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100 relative">
+    // Äußerer div (Hintergrund und Zentrierung)
+    <div className={`
+      fixed inset-0 bg-gray-300 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4
+      transition-opacity duration-300 ease-in-out // Transition für den Hintergrund
+      ${isModalVisible ? 'opacity-100' : 'opacity-0'} // Opazität des Hintergrunds steuern
+    `}>
+      {/* Innerer div (der eigentliche Modal-Inhalt) */}
+      <div className={`
+        bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative
+        transform transition-all duration-300 ease-in-out // Transition für den Modal-Inhalt
+        ${isModalVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'} // Skalierung und Opazität des Inhalts steuern
+      `}>
         <button
-          onClick={onClose}
+          onClick={handleCloseClick}
           className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 transition hover:scale-110 duration-300 w-8 h-8 rounded-full flex items-center justify-center p-0"
           aria-label="Schließen"
         >
@@ -831,7 +963,6 @@ const HelpModal = ({ onClose }) => {
             <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Kurzanleitung: Erster Dienstplan</summary>
             <div className="mt-2 text-base">
               <p className="mb-2">Hier eine schnelle Anleitung, um deinen ersten Dienstplan zu erstellen:</p>
-              {/* NEU: list-outside und angepasstes padding-left für ol/li */}
               <ol className="list-decimal list-outside pl-5 space-y-1">
                 <li className="pl-1"><strong>Gruppe erstellen:</strong> Gehe zum Bereich "Gruppen verwalten". Erstelle eine neue Gruppe, z.B. "Regenbogenland".</li>
                 <li className="pl-1"><strong>Mitarbeiter hinzufügen:</strong> Gehe zum Bereich "Mitarbeiter verwalten". Gib den Namen und die Wochenstunden ein und klicke auf "Mitarbeiter hinzufügen".</li>
@@ -849,9 +980,9 @@ const HelpModal = ({ onClose }) => {
             <div className="mt-2 text-base">
               <p>Verwalte deine Dienstplandateien und sorge für persistente Speicherung:</p>
               <ul className="list-disc list-outside pl-5 space-y-1">
-                <li className="pl-1"><strong>Datei öffnen (Import):</strong> Lädt einen Dienstplan von deinem Computer in die App.</li>
+                <li className="pl-1"><strong>Daten importieren:</strong> Lädt einen Dienstplan von deinem Computer in die App.</li>
                 <li className="pl-1"><strong>Speichern:</strong> Speichert Änderungen in der zuletzt geöffneten oder gespeicherten Datei auf deinem Computer.</li>
-                <li className="pl-1"><strong>Speichern unter (Export):</strong> Speichert den aktuellen Dienstplan unter einem neuen Namen an einem beliebigen Ort auf deinem Computer.</li>
+                <li className="pl-1"><strong>Daten exportieren:</strong> Speichert den aktuellen Dienstplan unter einem neuen Namen an einem beliebigen Ort auf deinem Computer.</li>
                 <li className="pl-1"><strong>Daten vergessen:</strong> Leert die App und entfernt die interne Verknüpfung zur zuletzt verwendeten Datei. Die Datei auf deinem Computer wird dabei <strong>NICHT gelöscht</strong>.</li>
                 <li className="pl-1"><strong>Persistente Speicherung:</strong> Damit deine Daten automatisch geladen werden, wenn du die App erneut öffnest, musst du deinem Browser die Berechtigung zur persistenten Speicherung erteilen. Klicke dafür auf das <strong>Schloss-Symbol</strong> in der Adressleiste deines Browsers (neben der URL). Wähle dort die Option <strong>"Dateien bearbeiten"</strong> aus und stelle sicher, dass <strong>"Bei jedem Besuch erlauben"</strong> aktiviert ist. Dies ist entscheidend, damit die App deine zuletzt verwendete Datei automatisch wiederfindet und lädt. Möglicherweise fragt dich dein Browser beim Speichern oder Importieren von Daten, ob du das Bearbeiten von Dateien zulassen möchtest.</li>
               </ul>
@@ -862,7 +993,6 @@ const HelpModal = ({ onClose }) => {
             <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Gruppen verwalten</summary>
             <div className="mt-2 text-base">
               <p>Organisiere deine Mitarbeiter in Gruppen und definiere deren Besonderheiten:</p>
-              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
               <ul className="list-disc list-outside pl-5 space-y-1">
                 <li className="pl-1"><strong>Gruppe hinzufügen:</strong> Gib einen Namen ein und wähle eine Farbe, die im Wochenplan und bei den Mitarbeitern angezeigt wird.</li>
                 <li className="pl-1"><strong>Öffnungszeiten festlegen:</strong> Für jede Gruppe kannst du die täglichen Öffnungszeiten definieren. Dies ist entscheidend für die <strong>Betreuungswarnungen</strong>. Du kannst mehrere Zeitbereiche pro Tag hinzufügen und Tage aktivieren/deaktivieren.</li>
@@ -879,7 +1009,6 @@ const HelpModal = ({ onClose }) => {
             <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Mitarbeiter verwalten</summary>
             <div className="mt-2 text-base">
               <p>Verwalte alle Details deiner Mitarbeiter:</p>
-              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
               <ul className="list-disc list-outside pl-5 space-y-1">
                 <li className="pl-1"><strong>Name & Wochenstunden:</strong> Gib den Namen des Mitarbeiters und seine vertraglichen Wochenstunden ein.</li>
                 <li className="pl-1"><strong>Verfügungszeit überschreiben:</strong> Hier kannst du eine individuelle Verfügungszeit in Stunden festlegen, die die allgemeinen Verfügungszeit-Regeln überschreibt. Lasse das Feld leer, um die Regeln anzuwenden.</li>
@@ -895,10 +1024,9 @@ const HelpModal = ({ onClose }) => {
             <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Verfügungszeit Regeln</summary>
             <div className="mt-2 text-base">
               <p>Definiere Regeln für die automatische Berechnung der Verfügungszeit:</p>
-              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
               <ul className="list-disc list-outside pl-5 space-y-1">
                 <li className="pl-1"><strong>Soll Arbeitszeit (h):</strong> Gib die vertraglichen Wochenstunden ein.</li>
-                <li className="pl-1"><strong>Verfügungszeit (h):</strong> Gib die entsprechende Verfügungszeit in Stunden ein.</li>
+                <li className="pl-1"><strong>Verfügungszeit (h):):</strong> Gib die entsprechende Verfügungszeit in Stunden ein.</li>
                 <li className="pl-1">Diese Regeln werden auf Mitarbeiter angewendet, für die <strong>keine individuelle Verfügungszeit</strong> unter "Mitarbeiter verwalten" überschrieben wurde.</li>
                 <li className="pl-1">Die Verfügungszeit wird in der Wochenübersicht ausgewiesen.</li>
               </ul>
@@ -909,7 +1037,6 @@ const HelpModal = ({ onClose }) => {
             <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Kategorien verwalten (Basisblöcke)</summary>
             <div className="mt-2 text-base">
               <p>Erstelle die Hauptkategorien für deine Schichtblöcke im Wochenplan:</p>
-              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
               <ul className="list-disc list-outside pl-5 space-y-1">
                 <li className="pl-1"><strong>Name & Farbe:</strong> Gib einen Namen (z.B. "Betreuung", "Verfügung", "Elterngespräch") und eine Farbe für die Kategorie an.</li>
                 <li className="pl-1"><strong>Als Verfügungszeit verwenden:</strong> Markiere diese Checkbox, wenn die Stunden dieser Kategorie in die Verfügungszeitberechnung einfließen sollen. Nur eine Kategorie kann so markiert werden.</li>
@@ -924,7 +1051,6 @@ const HelpModal = ({ onClose }) => {
             <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Unterkategorien verwalten (Unterblöcke)</summary>
             <div className="mt-2 text-base">
               <p>Erstelle spezifischere Unterkategorien, die zu einer Basis-Kategorie gehören:</p>
-              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
               <ul className="list-disc list-outside pl-5 space-y-1">
                 <li className="pl-1"><strong>Name:</strong> Gib einen Namen für die Unterkategorie ein (z.B. "Wald" für "Betreuung", "Sprachförderung" für "Verfügung").</li>
                 <li className="pl-1"><strong>Übergeordnete Kategorie:</strong> Wähle eine der Basis-Kategorien (oder "Pause") als übergeordnete Kategorie.</li>
@@ -938,7 +1064,6 @@ const HelpModal = ({ onClose }) => {
             <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Wochenplan</summary>
             <div className="mt-2 text-base">
               <p>Der zentrale Bereich zur Planung der Schichten deiner Mitarbeiter:</p>
-              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
               <ul className="list-disc list-outside pl-5 space-y-1">
                 <li className="pl-1"><strong>Anzeigebereich der Zeitleiste:</strong> Passe die Start- und Endzeiten der sichtbaren Zeitleiste an, um den relevanten Zeitraum anzuzeigen.</li>
                 <li className="pl-1"><strong>Gruppe/Mitarbeiter filtern:</strong> Filter die Anzeige nach bestimmten Gruppen oder einzelnen Mitarbeitern, um die Übersicht zu verbessern.</li>
@@ -956,7 +1081,6 @@ const HelpModal = ({ onClose }) => {
             <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Warnungen</summary>
             <div className="mt-2 text-base">
               <p>Die App bietet verschiedene Warnungen, um dir bei der Einhaltung von Arbeitszeitgesetzen und Personalbesetzung zu helfen:</p>
-              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
               <ul className="list-disc list-outside pl-5 space-y-1">
                 <li className="pl-1"><strong>Arbeitszeitgesetz-Warnungen:</strong> In der Tagesübersicht siehst du rote Ausrufezeichen (<AlertCircle className="inline-block w-5 h-5 text-red-500" />). Fahre mit der Maus darüber, um Details zu sehen, z.B. wenn Pausenregeln oder maximale Arbeitszeiten nicht eingehalten werden.</li>
                 <li className="pl-1"><strong>Betreuungswarnungen:</strong> Rote, transparente Bereiche im Wochenplan zeigen visuell an, wenn die Mindestbesetzung in einer Gruppe während der Öffnungszeiten nicht erreicht wird. Diese basieren auf der als "Betreuungskategorie" markierten Kategorie. Diese Warnung wird nur angezeigt wenn Öffnungszeiten der Gruppe hinterlegt wurden.</li>
@@ -969,7 +1093,6 @@ const HelpModal = ({ onClose }) => {
             <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Drucken</summary>
             <div className="mt-2 text-base">
               <p>Drucke deinen Wochenplan für die Dokumentation oder den Aushang:</p>
-              {/* NEU: list-outside und angepasstes padding-left für ul/li */}
               <ul className="list-disc list-outside pl-5 space-y-1">
                 <li className="pl-1"><strong>Druckoptionen:</strong> Klicke auf "Wochenplan drucken", um ein Fenster mit Optionen zu öffnen. Hier kannst du wählen, ob du die Wochenübersicht mitdrucken möchtest.</li>
                 <li className="pl-1"><strong>Filter für den Druck:</strong> Du kannst den angezeigten Plan vor dem Drucken nach Gruppen oder einzelnen Mitarbeitern filtern. Nur die gefilterten Daten werden gedruckt.</li>
@@ -985,7 +1108,7 @@ const HelpModal = ({ onClose }) => {
 
         <div className="flex justify-center mt-6">
           <button
-            onClick={onClose}
+            onClick={handleCloseClick}
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
           >
             Schließen
@@ -999,143 +1122,176 @@ const HelpModal = ({ onClose }) => {
 // --- Release Notes Data ---
 export const RELEASE_NOTES = [
   {
-    version: "Beta 1.8.0",
-    optionalTitle: "Am Rande der Zeit",
-    whatsNew: [
-      "<strong>Randzeiten:</strong> <br />Unter <strong>Öffnungszeiten festlegen</strong> in <strong>Gruppen verwalten</strong> kannst du jetzt Randzeiten definieren. Für Randzeiten werden die Betreuungswarnungen unterdrückt.",
+    "version": "Beta 1.9.0",
+    "optionalTitle": "Ein Hauch von Eleganz",
+    "whatsNew": [
+      "<strong>Verbesserte Meldungen:</strong> <br>Meldungen werden nun konsistent am unteren Bildschirmrand angezeigt und sind von überall in der App sichtbar. Sie erscheinen jetzt auch in passenden Farben (<span class=\"text-green-600 font-semibold\" style=\"font-weight: normal;\">Grün</span> für Erfolg, <span class=\"text-red-600 font-semibold\" style=\"font-weight: normal;\">Rot</span> für Fehler, <span class=\"text-blue-600 font-semibold\" style=\"font-weight: normal;\">Blau</span> für Informationen), um ihre Bedeutung auf den ersten Blick zu verdeutlichen."
     ],
-    bugFixes: [
-      "Öffnungszeiten-Texte in <strong>Vorhandene Gruppen</strong> verursachen keine fehlerhafte Anordnung der Buttons mehr.",
-      "Das Warnsymbol für Arbeitszeitverletzungen in der Tagesübersicht wird in der Druckansicht nun korrekt ausgeblendet.",
+    "bugFixes": [
+      "<strong>Export-Abbruch behoben:</strong> <br />Das Abbrechen des Wochenplan-Exports führt nun nicht mehr zu einem ungewollten Download der Datei.",
+      "<strong>Anpassung einiger Texte:</strong> <br>Texte für Warnungen, Anleitungen und im Versionsverlauf wurden überarbeitet und korrigiert."
     ],
-    adjustments: [
-      "Die Buttons in der Datenverwaltung werden nun konsistent in der selben Größe dargestellt.",
-      "Beim Export des Wochenplans wird nun ein Fenster zum Auswählen des Speicherorts angezeigt.",
-      "Kleine Schichtblöcke stellen nun die Zeit in Minuten und gedreht dar. Das sorgt für eine kompaktere und übersichtlichere Anzeige und macht kleine Blöcke auch beim Druck lesbar.",
-      "Generelle Anpassungen der Textdarstellung in Schichtblöcken um diese lesbarer zu machen.",
+    "adjustments": [
+      "<strong>Konsistentes Design:</strong> <br>Der visuelle Stil der App wurde durchgängig optimiert. Ein <span class=\"text-blue-600\">frosted glass</span> mit sanften <span class=\"text-blue-600\">Blur-Effekten</span> und einheitlichen <span class=\"text-blue-600\">Animationen</span> wurde in der gesamten Anwendung eingeführt. Dies sorgt für ein modernes, konsistentes Erscheinungsbild und ein noch aufgeräumteres Nutzererlebnis."
     ]
   },
   {
-    version: "Beta 1.7.0",
-    optionalTitle: "Erklärbär-Update",
-    whatsNew: [
-      "Ein neuer <strong>Hilfe-Button</strong> ist jetzt oben rechts neben dem 'Fehler melden'-Button verfügbar. Klicke darauf, um die neue <strong>Anleitung</strong> zu öffnen.",
+    "version": "Beta 1.8.0",
+    "optionalTitle": "Am Rande der Zeit",
+    "whatsNew": [
+      "<strong>Randzeiten:</strong> <br />Unter <span class=\"text-blue-600\">Öffnungszeiten festlegen</span> in <span class=\"text-blue-600\">Gruppen verwalten</span> kannst du jetzt Randzeiten definieren. Für Randzeiten werden die Betreuungswarnungen unterdrückt."
     ],
-    bugFixes: [
+    "bugFixes": [
+      "<strong>Button-Anordnung:</strong> <br />Öffnungszeiten-Texte in <span class=\"text-blue-600\">Vorhandene Gruppen</span> verursachen keine fehlerhafte Anordnung der Buttons mehr.",
+      "<strong>Druckansicht:</strong> <br />Das Warnsymbol für Arbeitszeitverletzungen in der Tagesübersicht wird in der Druckansicht nun korrekt ausgeblendet."
     ],
-    adjustments: [
-      "Button Animationen wurden leicht angepasst.",
-      "Versionierung wurde angepasst.",
+    "adjustments": [
+      "<strong>Button-Größen:</strong> <br />Die Buttons in der Datenverwaltung werden nun konsistent in der selben Größe dargestellt.",
+      "<strong>Export-Speicherort:</strong> <br />Beim Export des Wochenplans wird nun ein Fenster zum Auswählen des Speicherorts angezeigt.",
+      "<strong>Schichtblock-Darstellung:</strong> <br />Kleine Schichtblöcke stellen nun die Zeit in Minuten und gedreht dar. Das sorgt für eine kompaktere und übersichtlichere Anzeige und macht kleine Blöcke auch beim Druck lesbar.",
+      "<strong>Text-Lesbarkeit:</strong> <br />Generelle Anpassungen der Textdarstellung in Schichtblöcken, um diese lesbarer zu machen."
     ]
   },
   {
-    version: "Beta 1.6.1",
-    whatsNew: [
+    "version": "Beta 1.7.0",
+    "optionalTitle": "Erklärbär-Update",
+    "whatsNew": [
+      "<strong>Hilfe-Button:</strong> <br>Ein neuer <span class=\"text-blue-600\">Hilfe-Button</span> ist jetzt oben rechts neben dem <span class=\"text-blue-600\">Fehler melden</span>-Button verfügbar. Klicke darauf, um die neue <span class=\"text-blue-600\">Anleitung</span> zu öffnen."
     ],
-    bugFixes: [
-      "Die Buttons zum Bearbeiten des Wochenplan-Titels und zur Verwaltung des Wochenplans werden in der Druckansicht nicht mehr angezeigt.",
-    ],
-    adjustments: [
-      "Das Aussehen beim Drucken wurde leicht angepasst.",
+    "bugFixes": [],
+    "adjustments": [
+      "<strong>Button-Animationen:</strong> <br />Button Animationen wurden leicht angepasst.",
+      "<strong>Versionierung:</strong> <br />Versionierung wurde angepasst."
     ]
   },
   {
-    version: "Beta 1.6.0",
-    optionalTitle: "Speicher-Update",
-    whatsNew: [
+    "version": "Beta 1.6.1",
+    "whatsNew": [],
+    "bugFixes": [
+      "<strong>Druckansicht-Buttons:</strong> <br />Die Buttons zum Bearbeiten des Wochenplan-Titels und zur Verwaltung des Wochenplans werden in der Druckansicht nicht mehr angezeigt."
     ],
-    bugFixes: [
-    ],
-    adjustments: [
-      "Daten werden nun ausschließlich in Speicherdateien auf dem PC gespeichert. Damit diese automatisch geladen werden, wenn die App geöffnet wird, muss im Browser die Berechtigung <strong>'Daten bearbeiten'</strong> erteilt und die Option <strong>'Bei jedem Besuch erlauben'</strong> ausgewählt werden.",
-      "Wenn alle Daten exportiert werden, wird nun eine <strong>.dienstplan</strong> Datei statt einer .json Datei erstellt.",
-      "Wenn ein Wochenplan exportiert wird, wird nun eine <strong>.wochenplan</strong> Datei statt einer .json Datei erstellt."
+    "adjustments": [
+      "<strong>Druckaussehen:</strong> <br />Das Aussehen beim Drucken wurde leicht angepasst."
     ]
   },
   {
-    version: "Beta 1.5.0",
-    whatsNew: [
-      "Es kann nun nach einzelnen Mitarbeitern gefiltert werden.",
-      "Gruppen und Mitarbeiter können nun direkt in den Druckoptionen gefiltert werden.",
-      "Wochenpläne können nun exportiert, importiert und gelöscht werden ohne dass andere Daten davon betroffen sind (muss noch ausgiebig getestet werden).",
-    ],
-    bugFixes: [
-      "Das Icon für die Arbeitszeitwarnung wird nun vertikal mittig in der Reihe dargestellt."
-    ],
-    adjustments: [
-      "Der Bearbeiten-Button für den Wochenplan-Titel wurde grafisch angepasst."
+    "version": "Beta 1.6.0",
+    "optionalTitle": "Speicher-Update",
+    "whatsNew": [],
+    "bugFixes": [],
+    "adjustments": [
+      "<strong>Daten-Speicherung:</strong> <br>Daten werden nun ausschließlich in Speicherdateien auf dem PC gespeichert. Damit diese automatisch geladen werden, wenn die App geöffnet wird, muss im Browser die Berechtigung <span class=\"text-blue-600\">Daten bearbeiten</span> erteilt und die Option <span class=\"text-blue-600\">Bei jedem Besuch erlauben </span>ausgewählt werden.",
+      "<strong>Dateiformat (Gesamt):</strong> <br />Wenn alle Daten exportiert werden, wird nun eine <span class=\"text-blue-600\">.dienstplan</span> Datei statt einer .json Datei erstellt.",
+      "<strong>Dateiformat (Wochenplan):</strong> <br />Wenn ein Wochenplan exportiert wird, wird nun eine <span class=\"text-blue-600\">.wochenplan</span> Datei statt einer .json Datei erstellt."
     ]
   },
   {
-    version: "Beta 1.4.0",
-    optionalTitle: "Druck-Update",
-    whatsNew: [
-      "Die erste funktionierende Druckenfunktion wurde implementiert."
+    "version": "Beta 1.5.0",
+    "whatsNew": [
+      "<strong>Mitarbeiterfilter:</strong> <br />Es kann nun nach einzelnen Mitarbeitern gefiltert werden.",
+      "<strong>Druckoptionen-Filter:</strong> <br />Gruppen und Mitarbeiter können nun direkt in den <span class=\"text-blue-600\">Druckoptionen</span> gefiltert werden.",
+      "<strong>Wochenplan-Verwaltung:</strong> <br />Wochenpläne können nun exportiert, importiert und gelöscht werden, ohne dass andere Daten davon betroffen sind (muss noch ausgiebig getestet werden)."
     ],
-    bugFixes: [
-      "Arbeitszeitwarnungen werden nun wieder angezeigt."
+    "bugFixes": [
+      "<strong>Arbeitszeitwarnungs-Icon:</strong> <br />Das Icon für die Arbeitszeitwarnung wird nun vertikal mittig in der Reihe dargestellt."
     ],
-    adjustments: []
+    "adjustments": [
+      "<strong>Wochenplan-Titel-Button:</strong> <br />Der Bearbeiten-Button für den Wochenplan-Titel wurde grafisch angepasst."
+    ]
   },
   {
-    version: "Beta 1.3.0",
-    whatsNew: [
-      "Blöcke können nun anderen Gruppen zugeordnet werden, und bei Betreuungswarnungen wird dies korrekt berücksichtigt."
+    "version": "Beta 1.4.0",
+    "optionalTitle": "Druck-Update",
+    "whatsNew": [
+      "<strong>Druckfunktion:</strong> <br />Die erste funktionierende Druckenfunktion wurde implementiert."
     ],
-    bugFixes: [
-      "Im Wochenplan können sich Blöcke nun wirklich nicht mehr überlappen.",
-      "Importierte JSON-Dateien sollten keine Probleme mehr hervorrufen, wenn eine Gruppe bearbeitet wird."
+    "bugFixes": [
+      "<strong>Arbeitszeitwarnungen:</strong> <br />Arbeitszeitwarnungen werden nun wieder angezeigt."
     ],
-    adjustments: []
+    "adjustments": []
   },
   {
-    version: "Beta 1.2.0",
-    optionalTitle: "Gruppen & Warnungen Update",
-    whatsNew: [
-      "Unter 'Mitarbeiter verwalten' können Mitarbeiter als <strong>Zusatzkräfte</strong> angegeben werden. Zusatzkräfte werden unter 'normale Mitarbeiter', aber über 'Praktikanten', 'FSJler' und 'Auszubildende' sortiert.",
-      "In 'Gruppen verwalten' können nun <strong>Öffnungszeiten der Gruppen</strong> angegeben werden. Außerdem kann dort angegeben werden wie viele Mitarbeiter mindestens in der Betreuung sein sollen. Im Wochenplan wird dann eine Warnung angezeigt wenn diese Regel nicht erfüllt ist. Die Anzeige von Warnungen ist nur möglich wenn in Kategorien verwalten ein Block mit der Checkbox 'Als Betreuungskategorie verwenden' markiert wurde.",
-      "<strong>Feedback Button</strong> oben rechts hinzugefügt."
+    "version": "Beta 1.3.0",
+    "whatsNew": [
+      "<strong>Block-Zuordnung:</strong> <br />Blöcke können nun anderen Gruppen zugeordnet werden, und bei Betreuungswarnungen wird dies korrekt berücksichtigt."
     ],
-    bugFixes: [
-      "Im Wochenplan können sich nun Blöcke nicht mehr überlappen."
+    "bugFixes": [
+      "<strong>Block-Überlappung:</strong> <br />Im Wochenplan können sich Blöcke nun wirklich nicht mehr überlappen.",
+      "<strong>Import-Fehler:</strong> <br />Importierte JSON-Dateien sollten keine Probleme mehr hervorrufen, wenn eine Gruppe bearbeitet wird."
     ],
-    adjustments: []
+    "adjustments": []
   },
   {
-    version: "Beta 1.1.0",
-    optionalTitle: "Erster Beta Release des Dienstplaners",
-    whatsNew: [
-      "<strong>Individuelle Verfügbarkeiten</strong> für deine Mitarbeiter: Im Bereich 'Mitarbeiter verwalten' kannst du jetzt spezifische Verfügbarkeitszeiten für einzelne Mitarbeiter festlegen. Diese individuellen Einstellungen überschreiben die allgemeingültige 'Verfügbarkeitszeit-Regel' und ermöglichen dir eine präzisere und bedarfsgerechtere Planung.",
-      "<strong>Erweiterte Mitarbeiterrollen und intelligente Arbeitszeitprüfung:</strong> Lege deine Mitarbeiter detailliert als normale Mitarbeiter, FSJler, Auszubildende oder Praktikanten fest. Für FSJler, Auszubildende und Praktikanten kannst du zudem die spezifischen Tage definieren, an denen sie in deiner Einrichtung anwesend sind. Im Wochenplan werden Schulzeiten dieser Mitarbeiter visuell heller dargestellt, um deren Abwesenheit klar zu kennzeichnen. Zusätzlich erhältst du in der Wochenübersicht eine Benachrichtigung, wenn die Anwesenheitstage von FSJlern, Auszubildenden oder Praktikanten zu viel oder zu wenig Arbeitszeit aufweisen.",
-      "<strong>Gruppen-Öffnungszeiten und Personalbesetzungsprüfung:</strong> Definiere für jede Gruppe die Öffnungszeiten pro Wochentag, auch mit Unterbrechungen (z.B. Mittagspause). Die App warnt dich, wenn während dieser Öffnungszeiten weniger als zwei Mitarbeiter in der von dir markierten 'Betreuungskategorie' anwesend sind. Diese Funktion ist optional und wird nur aktiv, wenn Öffnungszeiten und eine Betreuungskategorie festgelegt sind."
+    "version": "Beta 1.2.0",
+    "optionalTitle": "Öffnungszeiten und Warnungen Update",
+    "whatsNew": [
+      "<strong>Zusatzkräfte:</strong> <br />Unter <span class=\"text-blue-600\">Mitarbeiter verwalten</span> können Mitarbeiter als Zusatzkräfte angegeben werden. Zusatzkräfte werden unter <span class=\"text-blue-600\">normale Mitarbeiter</span>, aber über <span class=\"text-blue-600\">Praktikanten</span>, <span class=\"text-blue-600\">FSJler</span> und <span class=\"text-blue-600\">Auszubildende</span> sortiert.",
+      "<strong>Gruppen-Öffnungszeiten & Betreuungswarnungen:</strong> <br>In <span class=\"text-blue-600\">Gruppen verwalten</span> können nun <span class=\"text-blue-600\">Öffnungszeiten der Gruppen</span> angegeben werden. Außerdem kann dort angegeben werden, wie viele Mitarbeiter mindestens in der Betreuung sein sollen. Im Wochenplan wird dann eine Warnung angezeigt, wenn diese Regel nicht erfüllt ist. Die Anzeige von Warnungen ist nur möglich, wenn in <span class=\"text-blue-600\">Kategorien verwalten</span> ein Block mit der Checkbox 'Als Betreuungskategorie verwenden' markiert wurde.",
+      "<strong>Feedback-Button:</strong> <br />Ein <span class=\"text-blue-600\">Feedback-Button</span> wurde oben rechts hinzugefügt."
     ],
-    bugFixes: [
-      "Ein Block wird nun präzise in das Feld platziert, in das geklickt wurde, wodurch die Bedienung noch zuverlässiger wird."
+    "bugFixes": [
+      "<strong>Block-Überlappung:</strong> <br />Im Wochenplan können sich nun Blöcke nicht mehr überlappen."
     ],
-    adjustments: [
-      "<strong>Optimierte Farbdarstellung für Gruppen:</strong> In 'Gruppen verwalten' erscheinen Farben nun kräftiger, um eine bessere Unterscheidbarkeit zu gewährleisten. Im Wochenplan und in der Mitarbeiterverwaltung bleiben sie zur besseren Lesbarkeit weiterhin dezent.",
-      "<strong>Visuelle Zuordnung von Mitarbeitern zu Gruppen:</strong> Im Bereich 'Mitarbeiter verwalten' werden vorhandene Mitarbeiter nun mit der jeweiligen Gruppenfarbe hinterlegt, was dir die visuelle Identifikation und Zuordnung erheblich vereinfacht.",
-      "<strong>Verbessertes Popup im Wochenplan:</strong> Das 'Kategorie wählen'-Popup im Wochenplan wird jetzt in den Farben der Blöcke dargestellt, was die Navigation und Auswahl intuitiver macht."
+    "adjustments": []
+  },
+  {
+    "version": "Beta 1.1.0",
+    "optionalTitle": "Erster Beta Release des Dienstplaners",
+    "whatsNew": [
+      "<strong>Individuelle Verfügungszeiten für deine Mitarbeiter:</strong><br />Im Bereich <span class=\"text-blue-600\">Mitarbeiter verwalten</span> kannst du jetzt spezifische Verfügungszeiten für einzelne Mitarbeiter festlegen. Diese individuellen Einstellungen überschreiben die allgemeingültige <span class=\"text-blue-600\">Verfügungszeit-Regel</span> und ermöglichen dir eine präzisere und bedarfsgerechtere Planung.",
+      "<strong>Erweiterte Mitarbeiterrollen und intelligente Arbeitszeitprüfung:</strong> <br />Lege deine Mitarbeiter detailliert als normale Mitarbeiter, FSJler, Auszubildende oder Praktikanten fest. Für FSJler, Auszubildende und Praktikanten kannst du zudem die spezifischen Tage definieren, an denen sie in deiner Einrichtung anwesend sind. Im Wochenplan werden Schultage dieser Mitarbeiter visuell heller dargestellt, um deren Abwesenheit klar zu kennzeichnen. Zusätzlich siehst du in der Wochenübersicht eine Warnung, wenn die Anwesenheitstage von FSJlern, Auszubildenden oder Praktikanten zu viel oder zu wenig Arbeitszeit aufweisen.",
+      "<strong>Neue Version Popup:</strong> <br />Wenn die App geupdatet wurde erscheint nun ein einmaliges Popup, das die letzten Änderungen anzeigt."
+    ],
+    "bugFixes": [
+      "<strong>Präzise Blockplatzierung:</strong> <br />Ein Block wird nun präzise in das Feld platziert, in das geklickt wurde, wodurch die Bedienung noch zuverlässiger wird."
+    ],
+    "adjustments": [
+      "<strong>Optimierte Farbdarstellung für Gruppen:</strong> <br />In <span class=\"text-blue-600\">Gruppen verwalten</span> erscheinen Farben nun kräftiger, um eine bessere Unterscheidbarkeit zu gewährleisten. Im Wochenplan und in der Mitarbeiterverwaltung bleiben sie zur besseren Lesbarkeit weiterhin dezent.",
+      "<strong>Visuelle Zuordnung von Mitarbeitern zu Gruppen:</strong> <br />Im Bereich <span class=\"text-blue-600\">Mitarbeiter verwalten</span> werden vorhandene Mitarbeiter nun mit der jeweiligen Gruppenfarbe hinterlegt, was dir die visuelle Identifikation und Zuordnung erheblich vereinfacht.",
+      "<strong>Verbessertes Popup im Wochenplan:</strong> <br />Das <span class=\"text-blue-600\">Kategorie wählen</span>-Popup im Wochenplan wird jetzt in den Farben der Blöcke dargestellt, was die Navigation und Auswahl intuitiver macht."
     ]
   }
 ];
 
 
-
 // --- New Version Info Popup Component ---
 const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
   const [showHistory, setShowHistory] = useState(false);
+  const [isVisible, setIsVisible] = useState(false); // State für Fade-In/Out
 
   // Finde die Notizen für die aktuelle Version
   const currentVersionNotes = releaseNotes.find(note => note.version === version);
   // Filtert die Notizen, die nicht der aktuellen Version entsprechen, für den Verlauf
   const historicalNotes = releaseNotes.filter(note => note.version !== version);
 
+  // Effekt für Fade-In beim Mounten
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
+
+  // Handler für das Schließen des Popups mit Fade-Out
+  const handleClose = () => {
+    setIsVisible(false);
+    // Warte, bis die Transition abgeschlossen ist, bevor onClose aufgerufen wird
+    setTimeout(() => {
+      onClose();
+    }, 300); // Muss der Dauer der Transition-Klasse entsprechen
+  };
+
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-100 relative">
+    <div
+      className={`fixed inset-0 bg-gray-300 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4
+      transition-opacity duration-300 ease-in-out ${
+        isVisible ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      <div
+        className={`bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto transform transition-transform duration-300 ${
+          isVisible ? 'scale-100' : 'scale-95'
+        } relative`}
+      >
         <button
-          onClick={onClose}
+          onClick={handleClose} // Nutzt den neuen handleClose
           className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 transition hover:scale-110 duration-300 w-8 h-8 rounded-full flex items-center justify-center p-0"
           aria-label="Schließen"
         >
@@ -1200,7 +1356,7 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
 
             <div className="flex justify-center mt-6">
               <button
-                onClick={onClose}
+                onClick={handleClose} // Nutzt den neuen handleClose
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out mr-4"
               >
                 Verstanden!
@@ -1273,7 +1429,7 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
                 Zurück
               </button>
               <button
-                onClick={onClose}
+                onClick={handleClose} // Nutzt den neuen handleClose
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out"
               >
                 Schließen
@@ -1503,7 +1659,7 @@ const OpeningHoursEditor = ({ group, onUpdateGroup }) => {
                     id={`day-enabled-${group.id}-${day}`}
                     checked={isDayEnabled}
                     onChange={(e) => handleDayToggle(day, e.target.checked)}
-                    className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                    className="form-checkbox h-5 w-5 text-blue-600 rounded cursor-pointer"
                   />
                   <span className="text-lg font-semibold text-gray-800">{day}</span>
                 </label>
@@ -1625,9 +1781,75 @@ function App() {
   // IMPORTANT: Update this version string whenever you release a new version
   // for which you want to show the "What's New" popup.
   // Use a semantic versioning scheme (major.minor.patch) for easy comparison.
-  const CURRENT_APP_VERSION = "Beta 1.8.0"; // Updated version string
+  const CURRENT_APP_VERSION = "Beta 1.9.0"; // Updated version string
 
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(''); // Dein bestehender message state
+  const [messageType, setMessageType] = useState(''); // Dein bestehender messageType state (für Farben)
+  const [showMessageVisible, setShowMessageVisible] = useState(false); // NEU: Steuert die Opazität für den Fade-Effekt
+
+  // Refs, um die IDs der Timer zu speichern, damit wir sie bei Bedarf löschen können
+  const messageTimeoutRef = useRef(null); // Für den Haupt-Timer, der den Fade-Out startet
+  const fadeOutTimeoutRef = useRef(null); // Für den Timer, der den Inhalt nach dem Fade-Out leert
+  const MESSAGE_DISPLAY_DURATION = 4000; // Beispiel: 4 Sekunden
+
+useEffect(() => {
+    // 1. Alle bestehenden Timer löschen, um Konflikte bei schnellen Meldungswechseln zu vermeiden.
+    //    Dies ist wichtig, damit nur ein Timer pro Meldung aktiv ist.
+    if (messageTimeoutRef.current) {
+      clearTimeout(messageTimeoutRef.current);
+      messageTimeoutRef.current = null; // Ref zurücksetzen
+    }
+    if (fadeOutTimeoutRef.current) {
+      clearTimeout(fadeOutTimeoutRef.current);
+      fadeOutTimeoutRef.current = null; // Ref zurücksetzen
+    }
+
+    // Nur fortfahren, wenn eine Meldung angezeigt werden soll
+    if (message) {
+      // Verwende requestAnimationFrame, um sicherzustellen, dass der Browser das Element
+      // mit seiner initialen Opazität (opacity-0) gerendert hat,
+      // BEVOR wir setShowMessageVisible(true) setzen.
+      // Dies triggert die CSS-Transition korrekt.
+      let animationFrameId; // Variable, um die ID des requestAnimationFrame zu speichern
+      animationFrameId = requestAnimationFrame(() => {
+        setShowMessageVisible(true); // Jetzt die Opazität auf 100% setzen (startet den Fade-In)
+      });
+
+      // 2. Setze den Haupt-Timer, der die Meldung nach MESSAGE_DISPLAY_DURATION ausblendet.
+      messageTimeoutRef.current = setTimeout(() => {
+        setShowMessageVisible(false); // Opazität auf 0% setzen (startet den Fade-Out)
+
+        // 3. Setze einen zweiten Timer, der den Meldungsinhalt erst nach Abschluss
+        //    der Fade-Out-Transition leert (muss zur CSS-Dauer passen).
+        fadeOutTimeoutRef.current = setTimeout(() => {
+          setMessage(''); // Leert den Meldungstext
+          setMessageType(''); // Leert den Meldungstyp
+        }, 300); // Wichtig: Diese Dauer muss zur 'duration-300' in den CSS-Klassen passen
+
+      }, MESSAGE_DISPLAY_DURATION); // Die Dauer, für die die Meldung sichtbar ist
+
+      // Cleanup-Funktion für diesen spezifischen Effekt-Durchlauf.
+      // Diese Funktion wird ausgeführt, wenn die Komponente unmounted ODER
+      // wenn sich 'message', 'messageType' oder 'MESSAGE_DISPLAY_DURATION' ändern
+      // und diesen useEffect erneut auslösen.
+      return () => {
+        cancelAnimationFrame(animationFrameId); // Den requestAnimationFrame abbrechen, falls er noch läuft
+        if (messageTimeoutRef.current) {
+          clearTimeout(messageTimeoutRef.current);
+          messageTimeoutRef.current = null;
+        }
+        if (fadeOutTimeoutRef.current) {
+          clearTimeout(fadeOutTimeoutRef.current);
+          fadeOutTimeoutRef.current = null;
+        };
+      };
+    }
+
+    // Wenn 'message' leer ist (z.B. am Anfang oder nach dem Ausblenden),
+    // stellen wir sicher, dass die Meldung auch visuell unsichtbar ist.
+    // Hier ist kein zusätzlicher return-Block nötig, da der obere return-Block
+    // die Cleanup-Logik für alle Fälle abdeckt.
+  }, [message, messageType, MESSAGE_DISPLAY_DURATION]); // Abhängigkeiten: Effekt wird bei Änderungen neu ausgeführt
 
   // NEU: State, um zu verfolgen, ob der initiale Ladevorgang abgeschlossen ist
   const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
@@ -1646,6 +1868,12 @@ function App() {
 
     // NEU: State für die Sichtbarkeit des Hilfe-Modals
   const [showHelpModal, setShowHelpModal] = useState(false);
+
+  //State für die Sichtbarkeit des Feedback-Modals
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const handleFeedbackClick = () => {
+  setShowFeedbackModal(true);
+  };
 
   // Initial group state for new groups - now empty by default
   const initialOpeningHoursTemplate = {};
@@ -1800,7 +2028,7 @@ function App() {
   const draggedGroupIdRef = useRef(null);
   const dragOverGroupIdRef = useRef(null);
 
-  // --- Confirmation Modal States ---
+  // --- Confirm Modal States ---
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmModalMessage, setConfirmModalMessage] = useState('');
   const [confirmModalAction, setConfirmModalAction] = useState(null); // Function to call on confirm
@@ -2313,24 +2541,28 @@ function App() {
                 setWeeklyPlanTitle(importedData.masterSchedule.title || 'Wochenplan');
                 setFileHandle(storedHandle); // Setze das geladene Handle
                 setMessage('Daten aus letzter Datei erfolgreich geladen!');
+                setMessageType('success');
                 loadedSuccessfully = true;
                 console.log("Daten erfolgreich aus gespeicherter Datei geladen.");
               } else {
                 console.warn("Gespeicherte Datei hat ungültiges Format oder ist leer.");
-                setMessage('Die zuletzt geöffnete Datei ist ungültig oder leer. Bitte öffnen Sie eine neue Datei.');
+                setMessage('Die zuletzt importierte Datei ist ungültig oder leer. Bitte importiere eine neue Datei.');
+                setMessageType('error');
                 await deleteFileHandleFromDb(); // Ungültiges Handle entfernen
                 setFileHandle(null);
               }
             } catch (readError) {
               console.error("Fehler beim Lesen der zuletzt verwendeten Datei:", readError);
-              setMessage('Fehler beim Lesen der zuletzt verwendeten Datei. Bitte öffnen Sie eine neue Datei.');
+              setMessage('Fehler beim Lesen der zuletzt verwendeten Datei. Bitte importiere eine neue Datei.');
+              setMessageType('error');
               await deleteFileHandleFromDb(); // Handle entfernen, da es nicht lesbar war
               setFileHandle(null);
             }
           } else if (permissionStatus === 'prompt') {
-            setMessage('Berechtigung für die zuletzt verwendete Datei erforderlich. Bitte öffnen Sie die Datei manuell.');
+            setMessage('Berechtigung für die zuletzt verwendete Datei erforderlich. Bitte importiere die Datei manuell.');
           } else if (permissionStatus === 'denied') {
-            setMessage('Berechtigung für die zuletzt verwendete Datei verweigert. Bitte öffnen Sie die Datei manuell.');
+            setMessage('Berechtigung für die zuletzt verwendete Datei verweigert. Bitte importiere die Datei manuell.');
+            setMessageType('error');
             await deleteFileHandleFromDb(); // Handle entfernen, da Berechtigung verweigert
             setFileHandle(null);
           }
@@ -2352,7 +2584,7 @@ function App() {
           setDisplayEndHour(18);
           setDisplayEndMinute(0);
           setWeeklyPlanTitle('Wochenplan');
-          setMessage('Keine vorherigen Daten gefunden. Starten Sie mit einem leeren Plan oder öffnen Sie eine Datei.');
+          setMessage('Keine vorherigen Daten gefunden. Starte mit einem leeren Plan oder importiere eine Datei.');
         }
 
         // Versionsprüfung (unabhängig vom Datenladen)
@@ -2364,6 +2596,7 @@ function App() {
       } catch (error) {
         console.error("Allgemeiner Fehler beim Initialisieren der App:", error);
         setMessage("Ein Fehler ist beim Starten der App aufgetreten.");
+        setMessageType('error');
       } finally {
         setIsDataLoaded(true); // Mark data as loaded regardless of success/failure
         setIsInitialLoadComplete(true);
@@ -2378,6 +2611,7 @@ function App() {
   const handleAddGroup = () => {
     if (!newGroup.name.trim()) {
       setMessage('Gruppenname darf nicht leer sein.');
+      setMessageType('error');
       return;
     }
     const groupToAdd = { ...newGroup, id: uuidv4() };
@@ -2392,18 +2626,21 @@ function App() {
       disableStaffingWarning: true,
     }); // Reset to default, use groupColors
     setMessage('Gruppe erfolgreich hinzugefügt!');
+    setMessageType('success');
   };
 
   const handleDeleteGroup = (id) => {
     // Prevent deletion if group is assigned to any employee
     const isGroupUsed = employees.some(emp => emp.groupId === id);
     if (isGroupUsed) {
-      setMessage('Gruppe kann nicht gelöscht werden, daher ihr noch Mitarbeiter zugeordnet sind.');
+      setMessage('Gruppe kann nicht gelöscht werden, da ihr noch Mitarbeiter zugeordnet sind.');
+      setMessageType('error');
       return;
     }
     setGroups(prev => prev.filter(group => group.id !== id));
     setOrderedGroupIds(prev => prev.filter(groupId => groupId !== id)); // Remove from order
     setMessage('Gruppe erfolgreich gelöscht!');
+    setMessageType('success');
   };
 
   const handleEditGroupClick = (group) => {
@@ -2428,12 +2665,14 @@ function App() {
   const handleUpdateGroup = () => {
     if (!editingGroup.name.trim()) {
       setMessage('Gruppenname darf nicht leer sein.');
+      setMessageType('error');
       return;
     }
     setGroups(prev => prev.map(group =>
       group.id === editingGroupId ? { ...editingGroup } : group // Use editingGroup state
     ));
     setMessage('Gruppe erfolgreich aktualisiert!');
+    setMessageType('success');
     setEditingGroupId(null);
     setEditingGroup(null); // Clear editing group
     setIsGroupOpeningHoursMinimized(true); // Minimize after saving
@@ -2491,15 +2730,18 @@ function App() {
 
     if (!newEmployee.name.trim() || contractedHoursNum <= 0) {
       setMessage('Mitarbeitername und Stunden pro Woche sind erforderlich.');
+      setMessageType('error');
       return;
     }
     if (overriddenDisposalHoursNum !== null && overriddenDisposalHoursNum < 0) {
       setMessage('Überschriebene Verfügungszeit darf nicht negativ sein.');
+      setMessageType('error');
       return;
     }
     // Validate presence days for special types (excluding 'normal' and 'zusatzkraft')
     if (newEmployee.type !== 'normal' && newEmployee.type !== 'zusatzkraft' && (newEmployee.presenceDays || []).length === 0) {
       setMessage('Für Auszubildende, FSJler und Praktikanten müssen Anwesenheitstage ausgewählt werden.');
+      setMessageType('error');
       return;
     }
 
@@ -2515,6 +2757,7 @@ function App() {
         } : emp
       ));
       setMessage('Mitarbeiter erfolgreich aktualisiert!');
+      setMessageType('success');
       setEditingEmployeeId(null);
     } else {
       const employeeToAdd = {
@@ -2527,6 +2770,7 @@ function App() {
       };
       setEmployees(prev => [...prev, employeeToAdd]);
       setMessage('Mitarbeiter erfolgreich hinzugefügt!');
+      setMessageType('success');
     }
     setNewEmployee({ name: '', contractedHoursPerWeek: 0, groupId: '', overriddenDisposalHours: '', type: 'normal', presenceDays: [...WEEK_DAYS_PLAN] });
   };
@@ -2547,10 +2791,12 @@ function App() {
     const hasShifts = masterSchedule.shifts.some(shift => shift.employeeId === id);
     if (hasShifts) {
       setMessage('Mitarbeiter kann nicht gelöscht werden, da ihm noch Schichten zugeordnet sind.');
+      setMessageType('error');
       return;
     }
     setEmployees(prev => prev.filter(employee => employee.id !== id));
     setMessage('Mitarbeiter erfolgreich gelöscht!');
+    setMessageType('success');
   };
 
   const handleCancelEditEmployee = () => {
@@ -2562,21 +2808,25 @@ function App() {
   const handleAddCategory = () => {
     if (!newCategory.name.trim()) {
       setMessage('Kategoriename darf nicht leer sein.');
+      setMessageType('error');
       return;
     }
     // Prevent creating a category with the same name as the fixed PAUSE_CATEGORY
     if (newCategory.name.trim().toLowerCase() === PAUSE_CATEGORY.name.toLowerCase()) {
       setMessage(`Der Name "${PAUSE_CATEGORY.name}" ist für die System-Pause-Kategorie reserviert.`);
+      setMessageType('error');
       return;
     }
     // Prevent adding a new disposal time category if one already exists
     if (newCategory.isDisposalTimeCategory && disposalTimeCategory) {
         setMessage('Es kann nur eine Kategorie für die Verfügungszeitberechnung markiert werden.');
+        setMessageType('error');
         return;
     }
     // Prevent adding a new care category if one already exists
     if (newCategory.isCareCategory && careCategory) {
         setMessage('Es kann nur eine Kategorie als "Betreuungskategorie" markiert werden.');
+        setMessageType('error');
         return;
     }
 
@@ -2584,6 +2834,7 @@ function App() {
     setCategories(prev => [...prev, categoryToAdd]);
     setNewCategory({ name: '', color: blockColors[0] || 'bg-blue-500', isDisposalTimeCategory: false, isCareCategory: false }); // Reset with default disposal flag
     setMessage('Kategorie erfolgreich hinzugefügt!');
+    setMessageType('success');
   };
 
   const handleEditCategoryClick = (category) => {
@@ -2599,21 +2850,25 @@ function App() {
   const handleUpdateCategory = () => {
     if (!newCategory.name.trim()) {
       setMessage('Kategoriename darf nicht leer sein.');
+      setMessageType('error');
       return;
     }
     // Prevent renaming to the fixed PAUSE_CATEGORY name
     if (newCategory.name.trim().toLowerCase() === PAUSE_CATEGORY.name.toLowerCase()) {
       setMessage(`Der Name "${PAUSE_CATEGORY.name}" ist für die System-Pause-Kategorie reserviert.`);
+      setMessageType('error');
       return;
     }
     // Prevent marking another category as disposal time if one already exists and it's not the one being edited
     if (newCategory.isDisposalTimeCategory && disposalTimeCategory && disposalTimeCategory.id !== editingCategoryId) {
         setMessage('Es kann nur eine Kategorie für die Verfügungszeitberechnung markiert werden.');
+        setMessageType('error');
         return;
     }
     // Prevent marking another category as care if one already exists and it's not the one being edited
     if (newCategory.isCareCategory && careCategory && careCategory.id !== editingCategoryId) {
         setMessage('Es kann nur eine Kategorie als "Betreuungskategorie" markiert werden.');
+        setMessageType('error');
         return;
     }
 
@@ -2622,6 +2877,7 @@ function App() {
       category.id === editingCategoryId ? { ...newCategory } : category
     ));
     setMessage('Kategorie erfolgreich aktualisiert!');
+    setMessageType('success');
     setEditingCategoryId(null);
     setNewCategory({ name: '', color: blockColors[0] || 'bg-blue-500', isDisposalTimeCategory: false, isCareCategory: false }); // Reset with default disposal flag
   };
@@ -2635,15 +2891,18 @@ function App() {
 
     if (isCategoryUsedInShifts) {
       setMessage('Kategorie kann nicht gelöscht werden, da sie in Schichten verwendet wird.');
+      setMessageType('error');
       return;
     }
     if (isCategoryUsedAsParent) {
-      setMessage('Kategorie kann nicht gelöscht werden, da sie als Oberkategorie für Unterkategorien verwendet wird.');
+      setMessage('Kategorie kann nicht gelöscht werden, da sie als Oberkategorie für bestehende Unterkategorien verwendet wird.');
+      setMessageType('error');
       return;
     }
 
     setCategories(prev => prev.filter(category => category.id !== id));
     setMessage('Kategorie erfolgreich gelöscht!');
+    setMessageType('success');
   };
 
   const handleCancelEditCategory = () => {
@@ -2655,12 +2914,14 @@ function App() {
   const handleAddSubCategory = () => {
     if (!newSubCategory.name.trim() || !newSubCategory.parentCategoryId) {
       setMessage('Unterkategoriename und übergeordnete Kategorie sind erforderlich.');
+      setMessageType('error');
       return;
     }
     const subCategoryToAdd = { ...newSubCategory, id: uuidv4() };
     setSubCategories(prev => [...prev, subCategoryToAdd]);
     setNewSubCategory({ name: '', parentCategoryId: '', color: blockColors[0] || 'bg-gray-500' }); // Use blockColors
     setMessage('Unterkategorie erfolgreich hinzugefügt!');
+    setMessageType('success');
   };
 
   const handleEditSubCategoryClick = (subCategory) => {
@@ -2671,12 +2932,14 @@ function App() {
   const handleUpdateSubCategory = () => {
     if (!newSubCategory.name.trim() || !newSubCategory.parentCategoryId) {
       setMessage('Unterkategoriename und übergeordnete Kategorie sind erforderlich.');
+      setMessageType('error');
       return;
     }
     setSubCategories(prev => prev.map(subCategory =>
       subCategory.id === editingSubCategoryId ? { ...newSubCategory } : subCategory
     ));
     setMessage('Unterkategorie erfolgreich aktualisiert!');
+    setMessageType('success');
     setEditingSubCategoryId(null);
     setNewSubCategory({ name: '', parentCategoryId: '', color: blockColors[0] || 'bg-gray-500' }); // Use blockColors
   };
@@ -2688,10 +2951,12 @@ function App() {
     );
     if (isSubCategoryUsedInShifts) {
       setMessage('Unterkategorie kann nicht gelöscht werden, da sie in Schichten verwendet wird.');
+      setMessageType('error');
       return;
     }
     setSubCategories(prev => prev.filter(subCategory => subCategory.id !== id));
     setMessage('Unterkategorie erfolgreich gelöscht!');
+    setMessageType('success');
   };
 
   const handleCancelEditSubCategory = () => {
@@ -2699,13 +2964,14 @@ function App() {
     setNewSubCategory({ name: '', parentCategoryId: '', color: blockColors[0] || 'bg-gray-500' }); // Use blockColors
   };
 
-    // NEU: Funktionen zum Öffnen und Schließen des Hilfe-Modals
-  const handleOpenHelpModal = useCallback(() => {
-    setShowHelpModal(true);
+  // Funktion zum Öffnen des Modals
+  const openHelpModal = useCallback(() => {
+    setShowHelpModal(true); // Modal-Komponente in den DOM einfügen
   }, []);
 
-  const handleCloseHelpModal = useCallback(() => {
-    setShowHelpModal(false);
+  // Funktion zum Schließen des Modals (wird vom HelpModal nach der Animation aufgerufen)
+  const closeHelpModal = useCallback(() => {
+    setShowHelpModal(false); // Modal-Komponente aus dem DOM entfernen
   }, []);
 
   // --- Disposal Time Rules Management ---
@@ -2716,16 +2982,19 @@ function App() {
 
     if (contractedHoursNum <= 0 || disposalHoursNum < 0) {
       setMessage('Vertragsstunden müssen positiv sein, Verfügungszeit darf nicht negativ sein.');
+      setMessageType('error');
       return;
     }
     if (disposalTimeRules.some(rule => Number(rule.contractedHours) === contractedHoursNum)) {
       setMessage('Eine Regel für diese Vertragsstundenzahl existiert bereits.');
+      setMessageType('error');
       return;
     }
     const ruleToAdd = { ...newDisposalRule, id: uuidv4(), contractedHours: contractedHoursNum, disposalHours: disposalHoursNum };
     setDisposalTimeRules(prev => [...prev, ruleToAdd]);
     setNewDisposalRule({ contractedHours: '', disposalHours: '' }); // Reset to empty strings
     setMessage('Verfügungszeit-Regel erfolgreich hinzugefügt!');
+    setMessageType('success');
   };
 
   const handleEditDisposalRule = (rule) => {
@@ -2745,16 +3014,19 @@ function App() {
 
     if (contractedHoursNum <= 0 || disposalHoursNum < 0) {
       setMessage('Vertragsstunden müssen positiv sein, Verfügungszeit darf nicht negativ sein.');
+      setMessageType('error');
       return;
     }
     if (disposalTimeRules.some(rule => rule.id !== editingDisposalRuleId && Number(rule.contractedHours) === contractedHoursNum)) {
       setMessage('Eine Regel für diese Vertragsstundenzahl existiert bereits.');
+      setMessageType('error');
       return;
     }
     setDisposalTimeRules(prev => prev.map(rule =>
       rule.id === editingDisposalRuleId ? { ...newDisposalRule, contractedHours: contractedHoursNum, disposalHours: disposalHoursNum } : rule
     ));
     setMessage('Verfügungszeit-Regel erfolgreich aktualisiert!');
+    setMessageType('success');
     setEditingDisposalRuleId(null);
     setNewDisposalRule({ contractedHours: '', disposalHours: '' }); // Reset to empty strings
   };
@@ -2762,6 +3034,7 @@ function App() {
   const handleDeleteDisposalRule = (id) => {
     setDisposalTimeRules(prev => prev.filter(rule => rule.id !== id));
     setMessage('Verfügungszeit-Regel erfolgreich gelöscht!');
+    setMessageType('success');
   };
 
   const handleCancelEditDisposalRule = () => {
@@ -2782,7 +3055,7 @@ function App() {
         return;
     }
     if (categories.length === 0) {
-      setMessage('Bitte zuerst Kategorien erstellen, um Schichten hinzuzufellen.');
+      setMessage('Bitte zuerst Kategorien erstellen, um Schichten erstellen zu können.');
       return;
     }
 
@@ -2835,6 +3108,7 @@ function App() {
             (startTimeMinutes < existingSeg.endMinutes && endTimeMinutes > existingSeg.startMinutes)
         ) {
             setMessage('Neue Schicht überlappt mit einer bestehenden Schicht.');
+            setMessageType('error');
             return; // Prevent adding if there's an overlap
         }
     }
@@ -2879,6 +3153,7 @@ function App() {
       }
     }
     setMessage(`Schicht (${displayCategoryName}) erfolgreich hinzugefügt!`);
+    setMessageType('success');
     setAddShiftContext(null); // This was causing issues when addShiftContext was used within the same render cycle
   };
 
@@ -3091,6 +3366,7 @@ function App() {
     } else {
         // This was a drag, persist changes
         setMessage("Schicht erfolgreich aktualisiert!");
+        setMessageType('success');
     }
 
     setIsDragging(false);
@@ -3208,12 +3484,14 @@ function App() {
     if (shift.segments.length === 1) {
       updatedShifts = masterSchedule.shifts.filter(s => s.id !== shift.id);
       setMessage("Schicht erfolgreich gelöscht!");
+      setMessageType('success');
     } else {
       // If multiple segments, delete only the specific segment
       const updatedShift = { ...shift };
       updatedShift.segments = updatedShift.segments.filter((_, idx) => idx !== segmentIndex);
       updatedShifts = masterSchedule.shifts.map(s => s.id === updatedShift.id ? updatedShift : s);
       setMessage("Segment erfolgreich gelöscht!");
+      setMessageType('success');
     }
     setMasterSchedule(prev => ({ ...prev, shifts: updatedShifts }));
     localStorage.setItem('masterSchedule', JSON.stringify({ ...masterSchedule, shifts: updatedShifts })); // Save to localStorage
@@ -3280,6 +3558,7 @@ function App() {
     // Wir speichern direkt, da dies eine Zustandsänderung ist, die permanent sein soll
     localStorage.setItem('masterSchedule', JSON.stringify({ ...masterSchedule, shifts: updatedShifts }));
     setMessage("Schichtgruppe erfolgreich aktualisiert!");
+    setMessageType('success');
     setChangeGroupContext(null); // Kontext löschen
   };
 
@@ -3310,6 +3589,7 @@ function App() {
       setMasterSchedule(prev => ({ ...prev, shifts: updatedShifts }));
       localStorage.setItem('masterSchedule', JSON.stringify({ ...masterSchedule, shifts: updatedShifts }));
       setMessage("Schichtkategorie erfolgreich aktualisiert!");
+      setMessageType('success');
       setChangeShiftContext(null); // Clear context
   };
 
@@ -3339,11 +3619,13 @@ function App() {
   const handleSaveWeeklyPlanTitle = () => {
     if (!weeklyPlanTitle.trim()) {
       setMessage('Titel darf nicht leer sein.');
+      setMessageType('error');
       return;
     }
     setMasterSchedule(prev => ({ ...prev, title: weeklyPlanTitle.trim() }));
     // The masterSchedule useEffect will handle saving this change to localStorage
     setMessage('Wochenplan-Titel erfolgreich aktualisiert!');
+    setMessageType('success');
     setIsEditingWeeklyPlanTitle(false);
   };
 
@@ -3361,7 +3643,8 @@ function App() {
       // Wenn kein Handle vorhanden ist, fragen Sie nach einem neuen Speicherort (Save As)
       // Dies sollte bei Auto-Save nicht passieren, da wir nur speichern, wenn ein Handle existiert.
       if (showSuccessMessage) { // Nur anzeigen, wenn nicht Auto-Save
-        setMessage('Keine Datei zum Speichern ausgewählt. Bitte speichern Sie die Datei manuell.');
+        setMessage('Keine Datei zum Speichern ausgewählt. Bitte speichere die Datei manuell.');
+        setMessageType('error');
       }
       return;
     }
@@ -3376,11 +3659,13 @@ function App() {
         const result = await currentHandle.requestPermission({ mode: 'readwrite' });
         if (result !== 'granted') {
           setMessage('Schreibberechtigung für die Datei wurde verweigert.');
+          setMessageType('error');
           console.log("Schreibberechtigung verweigert.");
           return;
         }
       } else if (permissionStatus === 'denied') {
-        setMessage('Schreibberechtigung für die Datei ist verweigert. Bitte wählen Sie eine neue Datei.');
+        setMessage('Schreibberechtigung für die Datei ist verweigert. Bitte wähle eine neue Datei.');
+        setMessageType('error');
         setFileHandle(null);
         await deleteFileHandleFromDb(); // Handle aus IndexedDB entfernen
         console.log("Schreibberechtigung verweigert, Handle aus DB gelöscht.");
@@ -3408,11 +3693,13 @@ function App() {
       // NEU: Zeige die Nachricht nur an, wenn showSuccessMessage true ist
       if (showSuccessMessage) {
         setMessage('Daten erfolgreich gespeichert!');
+        setMessageType('success');
       }
       setFileHandle(currentHandle); // Stellen Sie sicher, dass das Handle gesetzt ist
     } catch (error) {
       console.error("Fehler beim Speichern der Datei:", error);
       setMessage(`Fehler beim Speichern der Datei: ${error.message}`);
+      setMessageType('error');
     }
   }, [groups, employees, categories, subCategories, disposalTimeRules, masterSchedule, orderedGroupIds, fileHandle, setMessage]); // setMessage als Abhängigkeit hinzugefügt
 
@@ -3421,6 +3708,7 @@ function App() {
   const handleSaveFileAs = useCallback(async () => {
     if (!window.showSaveFilePicker) {
       setMessage('Ihr Browser unterstützt die File System Access API nicht.');
+      setMessageType('error');
       return;
     }
 
@@ -3457,6 +3745,7 @@ function App() {
       } else {
         console.error("Fehler beim Speichern der Datei unter neuem Namen:", error);
         setMessage(`Fehler beim Speichern der Datei: ${error.message}`);
+        setMessageType('error');
       }
     }
   }, [handleSaveFile, weeklyPlanTitle]); // weeklyPlanTitle als Abhängigkeit hinzugefügt
@@ -3466,6 +3755,7 @@ function App() {
   const handleOpenFile = useCallback(async () => {
     if (!window.showOpenFilePicker) {
       setMessage('Ihr Browser unterstützt die File System Access API nicht.');
+      setMessageType('error');
       return;
     }
 
@@ -3499,11 +3789,12 @@ function App() {
         !Array.isArray(importedData.masterSchedule.shifts)
       ) {
         setMessage('Ungültiges Dateiformat. Die importierte Datei scheint kein gültiger Dienstplan-Export zu sein.');
+        setMessageType('error');
         console.warn("Importierte Datei hat ungültiges Format.");
         return;
       }
 
-      setConfirmModalMessage('Möchten Sie die aktuellen Daten wirklich durch die importierten Daten ersetzen? Dies kann nicht rückgängig gemacht werden.');
+      setConfirmModalMessage('Möchtest du die aktuellen Daten wirklich durch die importierten Daten ersetzen? Dies kann nicht rückgängig gemacht werden.');
       setConfirmModalAction(() => async () => { // Hinzugefügt: 'async' hier, da putFileHandleInDb async ist
         // This code runs if the user confirms
         setGroups(importedData.groups.map(g => {
@@ -3592,6 +3883,7 @@ function App() {
         console.log("Neues FileHandle erfolgreich in IndexedDB gespeichert nach Import.");
 
         setMessage('Daten erfolgreich importiert!');
+        setMessageType('success');
         setShowConfirmModal(false);
       });
       setShowConfirmModal(true);
@@ -3602,7 +3894,8 @@ function App() {
         console.log("Importvorgang abgebrochen.");
       } else {
         console.error("Fehler beim Importieren der Daten:", error);
-        setMessage(`Fehler beim Importieren der Daten: ${error.message}. Stellen Sie sicher, dass es sich um eine gültige JSON-Datei handelt.`);
+        setMessage(`Fehler beim Importieren der Daten: ${error.message}. Stelle sicher, dass es sich um eine gültige Datei handelt.`);
+        setMessageType('error');
       }
     }
   }, [setConfirmModalMessage, setConfirmModalAction, setGroups, setEmployees, setCategories, setSubCategories, setDisposalTimeRules, setMasterSchedule, setOrderedGroupIds, setDisplayStartHour, setDisplayStartMinute, setDisplayEndHour, setDisplayEndMinute, setWeeklyPlanTitle, setMessage, setShowConfirmModal]);
@@ -3610,7 +3903,7 @@ function App() {
 
 // Aktualisieren Sie handleClearAllData, um auch das fileHandle zu löschen
   const handleClearAllData = useCallback(() => {
-    setConfirmModalMessage('Möchten Sie, dass die App sich Ihre Daten nicht mehr merkt und mit einem leeren Plan startet? Die Daten werden NICHT aus der Speicherdatei auf Ihrem Computer gelöscht. Um die Daten dauerhaft zu entfernen, löschen Sie die Speicherdatei manuell von Ihrem Computer. Um die Daten wiederherzustellen, importieren Sie die Speicherdatei.');
+    setConfirmModalMessage('Möchtest du, dass die App sich Ihre Daten nicht mehr merkt und mit einem leeren Plan startet? Die Daten werden NICHT aus der Speicherdatei auf Ihrem Computer gelöscht. Um die Daten dauerhaft zu entfernen, lösche die Speicherdatei manuell von dem Computer. Um die Daten wiederherzustellen, importiere die Speicherdatei.');
     setConfirmModalAction(() => async () => { // Hinzugefügt: 'async' hier
       setGroups([]);
       setEmployees([]);
@@ -3632,6 +3925,7 @@ function App() {
       console.log("FileHandle erfolgreich aus IndexedDB gelöscht.");
 
       setMessage('Alle Daten erfolgreich gelöscht!');
+      setMessageType('success');
       setShowConfirmModal(false);
     });
     setShowConfirmModal(true);
@@ -3687,6 +3981,7 @@ function App() {
       // Die Änderungen werden erst beim nächsten "Speichern" in die Datei geschrieben.
 
       setMessage('Wochenplan erfolgreich gelöscht!');
+      setMessageType('success');
       setShowConfirmModal(false);
       setShowScheduleManagementModal(false); // Modal schließen
     });
@@ -3719,34 +4014,39 @@ function App() {
 
       const filename = `${sanitizedTitle}_${day}.${month}.${year}_${hours}.${minutes}.wochenplan`;
 
-      // NEU: Logik für Ordnerauswahl mit showSaveFilePicker
-      if (window.showSaveFilePicker) { // Prüfen, ob die API unterstützt wird
-        try {
-          const newHandle = await window.showSaveFilePicker({ // Benutzer wählt Speicherort
-            types: [{
-              description: 'Wochenplan Datei',
-              accept: { 'application/wochenplan+json': ['.wochenplan'] }, // Angepasster MIME-Type und Endung
-            }],
-            suggestedName: filename, // Vorgeschlagener Dateiname
-          });
+    // NEU: Logik für Ordnerauswahl mit showSaveFilePicker
+    if (window.showSaveFilePicker) { // Prüfen, ob die API unterstützt wird
+      try {
+        const newHandle = await window.showSaveFilePicker({ // Benutzer wählt Speicherort
+          types: [{
+            description: 'Wochenplan Datei',
+            accept: { 'application/wochenplan+json': ['.wochenplan'] }, // Angepasster MIME-Type und Endung
+          }],
+          suggestedName: filename, // Vorgeschlagener Dateiname
+        });
 
-          const writable = await newHandle.createWritable();
-          await writable.write(jsonString);
-          await writable.close();
+        const writable = await newHandle.createWritable();
+        await writable.write(jsonString);
+        await writable.close();
 
-          setMessage(`Wochenplan erfolgreich in "${filename}" gespeichert.`);
-          setShowScheduleManagementModal(false); // Modal schließen
-          return; // Beende die Funktion hier, wenn erfolgreich
-        } catch (error) {
-          if (error.name === 'AbortError') {
-            setMessage('Speichervorgang abgebrochen.');
-          } else {
-            console.error("Fehler beim Speichern der Datei:", error);
-            setMessage(`Fehler beim Speichern des Wochenplans: ${error.message}. Versuche Standard-Download.`);
-            // Fällt hier durch zur alten Download-Methode, wenn ein Fehler auftritt
-          }
+        setMessage(`Wochenplan erfolgreich in "${filename}" gespeichert.`);
+        setMessageType('success');
+        setShowScheduleManagementModal(false); // Modal schließen
+        return; // Beende die Funktion hier, wenn erfolgreich
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          setMessage('Speichervorgang abgebrochen.');
+          setMessageType('info'); // Optional: 'info' ist besser für Abbruch als 'error'
+          setShowScheduleManagementModal(false); // Modal auch bei Abbruch schließen
+          return; // WICHTIG: Beende die Funktion hier, wenn der Benutzer abbricht!
+        } else {
+          console.error("Fehler beim Speichern der Datei:", error);
+          setMessage(`Fehler beim Speichern des Wochenplans: ${error.message}. Versuche Standard-Download.`);
+          setMessageType('error');
+          // Fällt hier durch zur alten Download-Methode, wenn ein anderer Fehler auftritt
         }
       }
+    }
 
       // Fallback: Standard-Download-Link, falls showSaveFilePicker nicht verfügbar ist oder fehlschlägt
       const blob = new Blob([jsonString], { type: 'application/wochenplan+json' });
@@ -3762,10 +4062,12 @@ function App() {
       URL.revokeObjectURL(url); // Clean up the URL object
 
       setMessage(`Wochenplan "${filename}" erfolgreich heruntergeladen.`);
+      setMessageType('success');
       setShowScheduleManagementModal(false); // Modal schließen
     } catch (error) {
       console.error("Fehler beim Exportieren des Wochenplans:", error);
       setMessage('Fehler beim Exportieren des Wochenplans.');
+      setMessageType('error');
     }
   }, [masterSchedule, weeklyPlanTitle, setMessage]); // Abhängigkeiten für useMemo
 
@@ -3786,13 +4088,14 @@ function App() {
         // Basic validation for schedule data structure
         if (!importedData.masterSchedule || !Array.isArray(importedData.masterSchedule.shifts)) {
           setMessage('Ungültiges Dateiformat. Die importierte Datei scheint kein gültiger Wochenplan-Export zu sein.');
+          setMessageType('error');
           if (fileInputScheduleRef.current) { // Use the new ref here
             fileInputScheduleRef.current.value = '';
           }
           return;
         }
 
-        setConfirmModalMessage('Möchten Sie den aktuellen Wochenplan wirklich durch den importierten Wochenplan ersetzen? Mitarbeiter, Gruppen und Kategorien bleiben erhalten.');
+        setConfirmModalMessage('Möchtest du den aktuellen Wochenplan wirklich durch den importierten Wochenplan ersetzen? Mitarbeiter, Gruppen und Kategorien bleiben erhalten.');
         setConfirmModalAction(() => () => {
           // This code runs if the user confirms
           setMasterSchedule(importedData.masterSchedule);
@@ -3811,6 +4114,7 @@ function App() {
           // Die Änderungen werden erst beim nächsten "Speichern" in die Hauptdatei geschrieben.
 
           setMessage('Wochenplan erfolgreich importiert!');
+          setMessageType('success');
           setShowConfirmModal(false);
           setShowScheduleManagementModal(false); // Modal schließen
           if (fileInputScheduleRef.current) { // Use the new ref here
@@ -3821,7 +4125,8 @@ function App() {
 
       } catch (error) {
         console.error("Fehler beim Importieren des Wochenplans:", error);
-        setMessage('Fehler beim Importieren des Wochenplans. Stellen Sie sicher, dass es sich um eine gültige JSON-Datei handelt.');
+        setMessage('Fehler beim Importieren des Wochenplans. Stelle sicher, dass es sich um eine gültige Datei handelt.');
+        setMessageType('error');
         if (fileInputScheduleRef.current) { // Use the new ref here
           fileInputScheduleRef.current.value = '';
         }
@@ -3901,6 +4206,7 @@ function App() {
     draggedGroupIdRef.current = null; // Reset
     dragOverGroupIdRef.current = null; // Reset
     setMessage('Gruppenreihenfolge aktualisiert!');
+    setMessageType('success');
   };
 
   const handleGroupDragEnd = (e) => {
@@ -4010,38 +4316,50 @@ function App() {
           </div>
 
           {/* NEU: Hilfe-Button (links vom Feedback-Button) */}
-          <a
+          <button
             href="javascript:void(0)" // Verhindert Navigation, wenn auf den Link geklickt wird
-            onClick={handleOpenHelpModal}
-            className="absolute top-4 right-16 bg-blue-500 hover:bg-blue-600 hover:text-white text-white p-2 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-110 flex items-center justify-center print-hidden-element w-10 h-10"
+            onClick={openHelpModal}
+            className="absolute top-4 right-16 bg-blue-500 hover:bg-blue-600 hover:text-white text-white p-2 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-110 flex items-center justify-center print-hidden-element w-10 h-10 active:outline-none "
             aria-label="Hilfe öffnen"
             title="Hilfe & Anleitung"
             role="button" // Fügt eine semantische Rolle hinzu, da es kein echter Navigationslink ist
           >
             <HelpCircle size={24} /> {/* Lucide React HelpCircle Icon */}
-          </a>
+          </button>
 
           {/* Feedback Button */}
-          <a
-            href="https://docs.google.com/forms/d/e/1FAIpQLSehtSDB10AZE1aSGGvjeOeGneIhU8pWobYVWN9Ha3ob3AO8AQ/viewform?usp=dialog"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute top-4 right-4 bg-blue-500 hover:bg-blue-600 hover:text-white text-white p-2 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-110 flex items-center justify-center print-hidden-element"
+          <button
+            onClick={handleFeedbackClick}
+            className="absolute top-4 right-4 bg-blue-500 hover:bg-blue-600 hover:text-white text-white p-2 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-110 flex items-center justify-center print-hidden-element w-10 h-10"
+            aria-label="Feedback geben"
             title="Feedback geben oder Bug melden"
+            role="button"
           >
             <MessageSquare size={24} /> {/* Lucide React icon */}
-          </a>
+          </button>
 
           <h1 className="text-3xl sm:text-4xl font-extrabold text-center mb-16 text-gray-800">
             Kindergarten Dienstplan App
           </h1>
 
-          {message && (
-            <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg relative mb-6 message-alert" role="alert">
-              <span className="block sm:inline">{message}</span>
-              <span className="absolute top-0 bottom-0 right-0 px-4 py-3 cursor-pointer" onClick={() => setMessage('')}>
-                {/* Updated close icon to match the update popup */}
-                <svg className="h-6 w-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+{/* Message Display */}
+          {message && ( // Das div wird nur gerendert, wenn 'message' Inhalt hat
+            <div className={`
+                fixed z-[1000] bottom-4 left-1/2 transform -translate-x-1/2
+                flex items-center justify-between max-w-md
+                rounded-lg shadow-lg
+                ${messageType === 'success' ? 'bg-green-100/50 border-green-400 text-green-700'  : // /80 für 80% Opazität
+                  messageType === 'error' ? 'bg-red-100/50 border-red-400 text-red-700' : // /80 für 80% Opazität
+                  'bg-blue-100/50 border-blue-400 text-blue-700'} // /80 für 80% Opazität
+                text-blue-700 // Textfarbe bleibt gleich
+                backdrop-blur-md // NEU: Weichzeichner-Effekt
+                transition-opacity duration-300 ease-in-out
+                ${showMessageVisible ? 'opacity-100' : 'opacity-0'}
+                message-alert
+            `} role="alert">
+              {/* Message text container */}
+              <span className="block sm:inline px-4 py-3">
+                {message}
               </span>
             </div>
           )}
@@ -4127,7 +4445,7 @@ function App() {
                           id="staffingWarningsEnabled"
                           checked={!(editingGroupId ? editingGroup?.disableStaffingWarning ?? true : newGroup.disableStaffingWarning)} // Inverted logic
                           onChange={(e) => editingGroupId ? setEditingGroup(prev => ({ ...prev, disableStaffingWarning: !e.target.checked })) : setNewGroup(prev => ({ ...prev, disableStaffingWarning: !e.target.checked }))} // Inverted logic
-                          className="form-checkbox h-5 w-5 text-red-600 rounded"
+                          className="form-checkbox h-5 w-5 text-red-600 rounded cursor-pointer"
                         />
                         <span className="text-gray-700 font-medium">Betreuungs Warnungen</span>
                       </label>
@@ -4259,13 +4577,13 @@ function App() {
                                 <div className="flex flex-row items-center flex-shrink-0 gap-2">
                                   <button
                                     onClick={() => handleEditGroupClick(group)}
-                                    className="text-indigo-600 hover:text-indigo-800 text-sm" // Removed mr-3, gap handles spacing
+                                    className="text-indigo-600 hover:text-indigo-800 text-sm transition duration-300 ease-in-out transform hover:scale-105" // Removed mr-3, gap handles spacing
                                   >
                                     Bearbeiten
                                   </button>
                                   <button
                                     onClick={() => handleDeleteGroup(group.id)}
-                                    className="text-red-600 hover:text-red-800 text-sm"
+                                    className="text-red-600 hover:text-red-800 text-sm transition duration-300 ease-in-out transform hover:scale-105"
                                   >
                                     Löschen
                                   </button>
@@ -4333,7 +4651,7 @@ function App() {
                       name="groupId"
                       value={newEmployee.groupId}
                       onChange={handleEmployeeChange}
-                      className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 col-span-full sm:col-span-1"
+                      className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 col-span-full sm:col-span-1 cursor-pointer"
                     >
                       <option value="">Gruppe auswählen (optional)</option>
                       {groups.map(group => (
@@ -4346,7 +4664,7 @@ function App() {
                       name="type"
                       value={newEmployee.type}
                       onChange={handleEmployeeChange}
-                      className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 col-span-full sm:col-span-1"
+                      className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 col-span-full sm:col-span-1 cursor-pointer"
                     >
                       <option value="normal">Normaler Mitarbeiter</option>
                       <option value="zusatzkraft">Zusatzkraft</option> {/* Added Zusatzkraft */}
@@ -4370,7 +4688,7 @@ function App() {
                               value={day}
                               checked={(newEmployee.presenceDays || []).includes(day)}
                               onChange={handleEmployeeChange}
-                              className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                              className="form-checkbox h-5 w-5 text-blue-600 rounded cursor-pointer"
                             />
                             <span className="text-gray-700">{day}</span>
                           </label>
@@ -4451,13 +4769,13 @@ function App() {
                                 <div className="flex-shrink-0"> {/* Added flex-shrink-0 to button container */}
                                   <button
                                     onClick={() => handleEditEmployee(employee)}
-                                    className="text-indigo-600 hover:text-indigo-800 mr-3 text-sm"
+                                    className="text-indigo-600 hover:text-indigo-800 mr-3 text-sm transition duration-300 ease-in-out transform hover:scale-105"
                                   >
                                     Bearbeiten
                                   </button>
                                   <button
                                     onClick={() => handleDeleteEmployee(employee.id)}
-                                    className="text-red-600 hover:text-red-800 text-sm"
+                                    className="text-red-600 hover:text-red-800 text-sm transition duration-300 ease-in-out transform hover:scale-105"
                                   >
                                     Löschen
                                   </button>
@@ -4558,13 +4876,13 @@ function App() {
                             <div>
                               <button
                                 onClick={() => handleEditDisposalRule(rule)}
-                                className="text-indigo-600 hover:text-indigo-800 mr-3 text-sm"
+                                className="text-indigo-600 hover:text-indigo-800 mr-3 text-sm transition duration-300 ease-in-out transform hover:scale-105"
                               >
                                 Bearbeiten
                               </button>
                               <button
                                 onClick={() => handleDeleteDisposalRule(rule.id)}
-                                className="text-red-600 hover:text-red-800 text-sm"
+                                className="text-red-600 hover:text-red-800 text-sm transition duration-300 ease-in-out transform hover:scale-105"
                                 >
                                 Löschen
                               </button>
@@ -4614,13 +4932,20 @@ function App() {
                     />
                   </div>
                   <div className="mb-4 space-y-2">
-                    <label className={`flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 shadow-sm ${disposalTimeCategory && !editingCategoryId ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                    <label className={`flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 shadow-sm
+                      ${disposalTimeCategory && !editingCategoryId
+                        ? 'opacity-60 cursor-not-allowed' // Wenn deaktiviert, dann not-allowed
+                        : 'cursor-pointer' // Sonst, wenn aktiv, dann pointer
+                      }`}
+                    >
                       <input
                         type="checkbox"
                         name="isDisposalTimeCategory"
                         checked={newCategory.isDisposalTimeCategory}
                         onChange={(e) => setNewCategory({ ...newCategory, isDisposalTimeCategory: e.target.checked })}
-                        className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                        className={`form-checkbox h-5 w-5 text-blue-600 rounded
+                          ${disposalTimeCategory && disposalTimeCategory.id !== editingCategoryId ? 'cursor-not-allowed' : 'cursor-pointer'} // Cursor auf Input
+                        `}
                         disabled={disposalTimeCategory && disposalTimeCategory.id !== editingCategoryId}
                       />
                       <span className="text-gray-700 font-medium">Als Verfügungszeit verwenden</span>
@@ -4628,13 +4953,20 @@ function App() {
                           <span className="text-xs text-red-500 ml-2"> (Nur eine Kategorie kann markiert werden)</span>
                       )}
                     </label>
-                    <label className={`flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 shadow-sm ${careCategory && !editingCategoryId ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                    <label className={`flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 shadow-sm
+                      ${careCategory && !editingCategoryId
+                        ? 'opacity-60 cursor-not-allowed' // Wenn deaktiviert, dann not-allowed
+                        : 'cursor-pointer' // Sonst, wenn aktiv, dann pointer
+                      }`}
+                    >
                       <input
                         type="checkbox"
                         name="isCareCategory"
                         checked={newCategory.isCareCategory}
                         onChange={(e) => setNewCategory({ ...newCategory, isCareCategory: e.target.checked })}
-                        className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                        className={`form-checkbox h-5 w-5 text-blue-600 rounded
+                          ${careCategory && careCategory.id !== editingCategoryId ? 'cursor-not-allowed' : 'cursor-pointer'} // Cursor auf Input
+                        `}
                         disabled={careCategory && careCategory.id !== editingCategoryId}
                       />
                       <span className="text-gray-700 font-medium">Als Betreuungskategorie verwenden</span>
@@ -4681,13 +5013,13 @@ function App() {
                             <div>
                               <button
                                 onClick={() => handleEditCategoryClick(category)}
-                                className="text-indigo-600 hover:text-indigo-800 mr-3 text-sm"
+                                className="text-indigo-600 hover:text-indigo-800 mr-3 text-sm transition duration-300 ease-in-out transform hover:scale-105"
                               >
                                 Bearbeiten
                               </button>
                               <button
                                 onClick={() => handleDeleteCategory(category.id)}
-                                className="text-red-600 hover:text-red-800 text-sm"
+                                className="text-red-600 hover:text-red-800 text-sm transition duration-300 ease-in-out transform hover:scale-105"
                               >
                                 Löschen
                               </button>
@@ -4733,7 +5065,7 @@ function App() {
                       name="parentCategoryId"
                       value={newSubCategory.parentCategoryId}
                       onChange={(e) => setNewSubCategory({ ...newSubCategory, parentCategoryId: e.target.value })}
-                      className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200"
+                      className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 cursor-pointer"
                     >
                       <option value="">Übergeordnete Kategorie auswählen</option>
                       <option value={PAUSE_CATEGORY.id}>{PAUSE_CATEGORY.name}</option>
@@ -4745,7 +5077,7 @@ function App() {
                       selectedColor={newSubCategory.color}
                       onColorChange={(color) => setNewSubCategory({ ...newSubCategory, color: color })}
                       colors={blockColors}
-                      placeholder="Farbe für Zeitstrahl wählen"
+                      placeholder="Farbe wählen"
                     />
                   </div>
                   <div className="flex flex-col sm:flex-row justify-center gap-4">
@@ -4782,13 +5114,13 @@ function App() {
                               <div>
                                 <button
                                   onClick={() => handleEditSubCategoryClick(subCategory)}
-                                  className="text-indigo-600 hover:text-indigo-800 mr-3 text-sm"
+                                  className="text-indigo-600 hover:text-indigo-800 mr-3 text-sm transition duration-300 ease-in-out transform hover:scale-105"
                                  >
                                   Bearbeiten
                                 </button>
                                 <button
                                   onClick={() => handleDeleteSubCategory(subCategory.id)}
-                                  className="text-red-600 hover:text-red-800 text-sm"
+                                  className="text-red-600 hover:text-red-800 text-sm transition duration-300 ease-in-out transform hover:scale-105"
                                 >
                                   Löschen
                                 </button>
@@ -4827,13 +5159,13 @@ function App() {
                   <>
                     <button
                       onClick={handleSaveWeeklyPlanTitle}
-                      className="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1 rounded-md shadow-sm weekly-plan-title-edit-button"
+                      className="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1 rounded-md shadow-sm transition duration-300 ease-in-out transform hover:scale-105 weekly-plan-title-edit-button"
                     >
                       Speichern
                     </button>
                     <button
                       onClick={handleCancelEditWeeklyPlanTitle}
-                      className="bg-gray-400 hover:bg-gray-500 text-white text-sm px-3 py-1 rounded-md shadow-sm weekly-plan-title-edit-button"
+                      className="bg-gray-400 hover:bg-gray-500 text-white text-sm px-3 py-1 rounded-md shadow-sm transition duration-300 ease-in-out transform hover:scale-105 weekly-plan-title-edit-button"
                     >
                       Abbrechen
                     </button>
@@ -4961,7 +5293,7 @@ function App() {
                     id="toggleStaffingWarnings"
                     checked={showStaffingWarningsGlobally}
                     onChange={(e) => setShowStaffingWarningsGlobally(e.target.checked)}
-                    className="form-checkbox h-5 w-5 text-red-600 rounded"
+                    className="form-checkbox h-5 w-5 text-red-600 rounded cursor-pointer"
                   />
                   <label htmlFor="toggleStaffingWarnings" className="text-gray-700 font-medium cursor-pointer">
                     Betreuungswarnungen anzeigen
@@ -4974,7 +5306,7 @@ function App() {
             {filteredEmployeesForDisplay.length === 0 && selectedGroupIdFilter !== 'all' ? (
               <p className="text-center text-gray-500">Keine Mitarbeiter in der ausgewählten Gruppe vorhanden.</p>
             ) : employees.length === 0 ? (
-              <p className="text-center text-gray-500">Bitte fügen Sie zuerst Mitarbeiter hinzu, um den Dienstplan zu erstellen.</p>
+              <p className="text-center text-gray-500">Bitte füge zuerst Mitarbeiter hinzu, um den Dienstplan zu erstellen.</p>
             ) : (
               // Apply styling to the outer container for a cohesive look
               <div className="weekly-plan-days-container bg-white p-4 rounded-lg shadow-md border border-gray-200">
@@ -5381,7 +5713,7 @@ function App() {
           <div className="p-6 bg-gray-50 rounded-lg shadow-inner weekly-summary-section">
               <h2 className="text-2xl font-bold text-gray-700 mb-6 text-center">Wochenübersicht Mitarbeiter</h2>
               {employees.length === 0 ? (
-                  <p className="text-center text-gray-500">Bitte fügen Sie Mitarbeiter hinzu, um die Wochenübersicht zu sehen.</p>
+                  <p className="text-center text-gray-500">Bitte füge Mitarbeiter hinzu, um die Wochenübersicht zu sehen.</p>
               ) : (
                   <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-300 rounded-lg shadow-md border border-gray-200">
@@ -5474,23 +5806,23 @@ function App() {
           {/* Add Shift Type Menu (for clicking on empty space) */}
           {showAddShiftMenu && (
             <div
-              className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2 z-50 max-w-[12rem]" /* Reduced max-width */
+              className="absolute bg-white/80 backdrop-blur-md border border-gray-300 rounded-lg shadow-lg p-2 z-50 max-w-[12rem]" /* Reduced max-width */
               style={{ right: addShiftMenuPos.x, top: addShiftMenuPos.y }} /* Changed left to right */
               onMouseLeave={() => setShowAddShiftMenu(false)}
             >
               <h4 className="text-sm font-semibold text-gray-700 mb-2">Kategorie wählen:</h4>
               {/* PAUSE_CATEGORY button */}
               <button
-                    className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out hover:opacity-80 hover:border-2 hover:border-blue-500 ${PAUSE_CATEGORY.color} ${getTextColorForBg(PAUSE_CATEGORY.color)}`}
+                    className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out border-2 border-gray-200/50 hover:border-gray-200/60 opacity-80 hover:opacity-100 hover:scale-105 ${PAUSE_CATEGORY.color} ${getTextColorForBg(PAUSE_CATEGORY.color)} mb-1`}
                     onClick={() => handleAddSegmentFromMenu(PAUSE_CATEGORY.id)}
                   >
                     {PAUSE_CATEGORY.name}
               </button>
               {/* Subcategories under PAUSE_CATEGORY */}
               {subCategories.filter(subCat => subCat.parentCategoryId === PAUSE_CATEGORY.id).map(subCat => (
-                  <div key={subCat.id} className="w-full pl-4">
+                  <div key={subCat.id} className="w-full pl-4 mb-1">
                     <button
-                      className={`flex items-center w-full text-left px-3 py-1 text-xs rounded-md transition duration-150 ease-in-out hover:opacity-80 hover:border-2 hover:border-blue-500 ${subCat.color || PAUSE_CATEGORY.color} ${getTextColorForBg(subCat.color || PAUSE_CATEGORY.color)}`}
+                      className={`flex items-center w-full text-left px-3 py-1 text-xs rounded-md transition duration-150 ease-in-out border-2 border-gray-200/50 hover:border-gray-200/60 opacity-80 hover:opacity-100 hover:scale-105 ${subCat.color || PAUSE_CATEGORY.color} ${getTextColorForBg(subCat.color || PAUSE_CATEGORY.color)}`}
                       onClick={() => handleAddSegmentFromMenu(PAUSE_CATEGORY.id, subCat.id)}
                     >
                       {subCat.name}
@@ -5502,15 +5834,15 @@ function App() {
               {categories.map(category => (
                 <React.Fragment key={category.id}>
                   <button
-                    className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out hover:opacity-80 hover:border-2 hover:border-blue-500 ${category.color} ${getTextColorForBg(category.color)}`}
+                    className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out border-2 border-gray-200/50 hover:border-gray-200/60 opacity-80 hover:opacity-100 hover:scale-105 ${category.color} ${getTextColorForBg(category.color)} mb-1`}
                     onClick={() => handleAddSegmentFromMenu(category.id)}
                   >
                     {category.name}
                   </button>
                   {subCategories.filter(subCat => subCat.parentCategoryId === category.id).map(subCat => (
-                    <div key={subCat.id} className="w-full pl-4">
+                    <div key={subCat.id} className="w-full pl-4 mb-1">
                       <button
-                        className={`flex items-center w-full text-left px-3 py-1 text-xs rounded-md transition duration-150 ease-in-out hover:opacity-80 hover:border-2 hover:border-blue-500 ${subCat.color || category.color} ${getTextColorForBg(subCat.color || category.color)}`}
+                        className={`flex items-center w-full text-left px-3 py-1 text-xs rounded-md transition duration-150 ease-in-out border-2 border-gray-200/50 hover:border-gray-200/60 opacity-80 hover:opacity-100 hover:scale-105 ${subCat.color || category.color} ${getTextColorForBg(subCat.color || category.color)}`}
                         onClick={() => handleAddSegmentFromMenu(category.id, subCat.id)}
                       >
                         {subCat.name}
@@ -5525,24 +5857,24 @@ function App() {
           {/* Shift Options Menu (for clicking on existing shift block) */}
           {showShiftOptionsMenu && shiftOptionsContext && (
             <div
-              className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2 z-50 max-w-[12rem]"
+              className="absolute bg-white/80 backdrop-blur-md border border-gray-300 rounded-lg shadow-lg p-2 z-50 max-w-[12rem]"
               style={{ right: shiftOptionsMenuPos.x, top: shiftOptionsMenuPos.y }}
               onMouseLeave={() => setShowShiftOptionsMenu(false)}
             >
               <button
-                className="block w-full text-left px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-100 rounded-md"
+                className="block w-full text-left px-3 py-2 text-sm text-indigo-700 rounded-md mb-1 transition duration-150 ease-in-out border-2 border-indigo-200 opacity-80 hover:opacity-100 hover:border-indigo-300 hover:scale-105"
                 onClick={handleChangeShiftClick}
               >
                 Kategorie ändern
               </button>
               <button
-                className="block w-full text-left px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 rounded-md"
+                className="block w-full text-left px-3 py-2 text-sm text-indigo-700 rounded-md mb-1 transition duration-150 ease-in-out border-2 border-indigo-200 opacity-80 hover:opacity-100 hover:border-indigo-300 hover:scale-105"
                 onClick={handleChangeGroupClick} // New button for changing group
               >
                 Gruppe zuweisen
               </button>
               <button
-                className="block w-full text-left px-3 py-2 text-sm text-red-700 hover:bg-red-100 rounded-md"
+                className="block bg-red-300 w-full text-left px-3 py-2 text-sm text-red-800 hover:bg-red-500 hover:text-white rounded-md mb-1 transition duration-150 ease-in-out border-2 border-red-400 opacity-80 hover:opacity-100 hover:border-red-600 hover:scale-105"
                 onClick={handleDeleteShift}
               >
                 Löschen
@@ -5553,14 +5885,14 @@ function App() {
           {/* Change Group Menu (for assigning shifts to different groups) */}
           {showChangeGroupMenu && changeGroupContext && (
             <div
-              className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2 z-50 max-w-[15rem]" // Increased max-width for group names
+              className="absolute bg-white/80 backdrop-blur-md border border-gray-300 rounded-lg shadow-lg p-2 z-50 max-w-[15rem]" // Increased max-width for group names
               style={{ right: changeGroupMenuPos.x, top: changeGroupMenuPos.y }}
               onMouseLeave={() => setShowChangeGroupMenu(false)}
             >
               <h4 className="text-sm font-semibold text-gray-700 mb-2">Gruppe zuweisen:</h4>
               {/* Option to revert to employee's default group */}
               <button
-                className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out hover:opacity-80 hover:border-2 hover:border-blue-500 bg-gray-100 ${getTextColorForBg('bg-gray-100')}`}
+                className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out border-2 border-gray-200 opacity-80 hover:opacity-100 hover:border-gray-300 hover:scale-105 ${getTextColorForBg('bg-gray-100')} mb-1`}
                 onClick={() => handleUpdateSegmentGroup(employees.find(emp => emp.id === changeGroupContext.shift.employeeId)?.groupId || 'no-group')}
               >
                 Standardgruppe ({employees.find(emp => emp.id === changeGroupContext.shift.employeeId)?.groupId ? groups.find(g => g.id === employees.find(emp => emp.id === changeGroupContext.shift.employeeId)?.groupId)?.name : 'Ohne Gruppe'})
@@ -5571,7 +5903,7 @@ function App() {
               {groups.map(group => (
                 <button
                   key={group.id}
-                  className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out hover:opacity-80 hover:border-2 hover:border-blue-500 ${group.color} ${getTextColorForBg(group.color)}`}
+                  className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out border-2 border-gray-200 opacity-80 hover:opacity-100 hover:border-gray-300 hover:scale-105 ${group.color} ${getTextColorForBg(group.color)} mb-1`}
                   onClick={() => handleUpdateSegmentGroup(group.id)}
                 >
                   {group.name}
@@ -5580,7 +5912,7 @@ function App() {
               {/* Option for "Ohne Gruppe" explicitly if not already covered */}
               {!groups.some(g => g.id === 'no-group') && (
                 <button
-                  className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out hover:opacity-80 hover:border-2 hover:border-blue-500 bg-gray-200 ${getTextColorForBg('bg-gray-200')}`}
+                  className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out border-2 border-gray-200 opacity-80 hover:opacity-100 hover:border-gray-300 hover:scale-105 ${getTextColorForBg('bg-gray-200')} mb-1`}
                   onClick={() => handleUpdateSegmentGroup('no-group')}
                 >
                   Ohne Gruppe
@@ -5592,23 +5924,23 @@ function App() {
           {/* Change Shift Menu (for changing category/subcategory of existing shifts) */}
           {showChangeShiftMenu && changeShiftContext && (
             <div
-              className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2 z-50 max-w-[12rem]" /* Reduced max-width */
+              className="absolute bg-white/80 backdrop-blur-md border border-gray-300 rounded-lg shadow-lg p-2 z-50 max-w-[12rem]" /* Reduced max-width */
               style={{ right: changeShiftMenuPos.x, top: changeShiftMenuPos.y }} /* Changed left to right */
               onMouseLeave={() => setShowChangeShiftMenu(false)}
             >
               <h4 className="text-sm font-semibold text-gray-700 mb-2">Neue Kategorie wählen:</h4>
               {/* PAUSE_CATEGORY button */}
               <button
-                    className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out hover:opacity-80 hover:border-2 hover:border-blue-500 ${PAUSE_CATEGORY.color} ${getTextColorForBg(PAUSE_CATEGORY.color)}`}
+                    className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out border-2 border-gray-200/50 hover:border-gray-200/60 opacity-80 hover:opacity-100 hover:scale-105 ${PAUSE_CATEGORY.color} ${getTextColorForBg(PAUSE_CATEGORY.color)} mb-1`}
                     onClick={() => handleUpdateSegmentCategory(PAUSE_CATEGORY.id, '')}
                   >
                     {PAUSE_CATEGORY.name}
               </button>
               {/* Subcategories under PAUSE_CATEGORY */}
               {subCategories.filter(subCat => subCat.parentCategoryId === PAUSE_CATEGORY.id).map(subCat => (
-                  <div key={subCat.id} className="w-full pl-4">
+                  <div key={subCat.id} className="w-full pl-4 mb-1">
                     <button
-                      className={`flex items-center w-full text-left px-3 py-1 text-xs rounded-md transition duration-150 ease-in-out hover:opacity-80 hover:border-2 hover:border-blue-500 ${subCat.color || PAUSE_CATEGORY.color} ${getTextColorForBg(subCat.color || PAUSE_CATEGORY.color)}`}
+                      className={`flex items-center w-full text-left px-3 py-1 text-xs rounded-md transition duration-150 ease-in-out border-2 border-gray-200/50 hover:border-gray-200/60 opacity-80 hover:opacity-100 hover:scale-105 ${subCat.color || PAUSE_CATEGORY.color} ${getTextColorForBg(subCat.color || PAUSE_CATEGORY.color)}`}
                       onClick={() => handleUpdateSegmentCategory(PAUSE_CATEGORY.id, subCat.id)}
                     >
                       {subCat.name}
@@ -5619,15 +5951,15 @@ function App() {
                 {categories.map(category => (
                   <React.Fragment key={category.id}>
                     <button
-                      className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out hover:opacity-80 hover:border-2 hover:border-blue-500 ${category.color} ${getTextColorForBg(category.color)}`}
+                      className={`flex items-center w-full text-left px-3 py-2 text-sm rounded-md transition duration-150 ease-in-out border-2 border-gray-200/50 hover:border-gray-200/60 opacity-80 hover:opacity-100 hover:scale-105 ${category.color} ${getTextColorForBg(category.color)} mb-1`}
                       onClick={() => handleUpdateSegmentCategory(category.id, '')}
                     >
                       {category.name}
                     </button>
                     {subCategories.filter(subCat => subCat.parentCategoryId === category.id).map(subCat => (
-                      <div key={subCat.id} className="w-full pl-4">
+                      <div key={subCat.id} className="w-full pl-4 mb-1">
                         <button
-                          className={`flex items-center w-full text-left px-3 py-1 text-xs rounded-md transition duration-150 ease-in-out hover:opacity-80 hover:border-2 hover:border-blue-500 ${subCat.color || category.color} ${getTextColorForBg(subCat.color || category.color)}`}
+                          className={`flex items-center w-full text-left px-3 py-1 text-xs rounded-md transition duration-150 ease-in-out border-2 border-gray-200/50 hover:border-gray-200/60 opacity-80 hover:opacity-100 hover:scale-105 ${subCat.color || category.color} ${getTextColorForBg(subCat.color || category.color)}`}
                           onClick={() => handleUpdateSegmentCategory(category.id, subCat.id)}
                         >
                           {subCat.name}
@@ -5694,15 +6026,19 @@ function App() {
             {/* NEU: Hilfe-Modal rendern */}
             {showHelpModal && (
               <HelpModal
-                onClose={handleCloseHelpModal}
+                onClose={closeHelpModal} // Verwende die neue closeHelpModal-Funktion
               />
+            )}
+            {showFeedbackModal && (
+              <FeedbackModal onClose={() => setShowFeedbackModal(false)} />
             )}
           </div>
         </div>
         {/* Warning Tooltip (appears on hover over AlertCircle) */}
           {showWarningTooltip && warningTooltipContent.length > 0 && (
             <div
-              className="fixed bg-red-700 text-white text-xs p-2 rounded-md shadow-lg z-[1000] max-w-xs" // "fixed" für Mauszeiger-Folge, erhöhter z-index, pointer-events-none entfernt
+              className="fixed bg-red-700/80 backdrop-blur-md text-white text-xs p-2 rounded-md shadow-lg z-[1000] max-w-xs" // "fixed" für Mauszeiger-Folge, erhöhter z-index,
+              pointer-events-none entfernt
               style={{
                 left: warningTooltipPos.x,
                 top: warningTooltipPos.y,
