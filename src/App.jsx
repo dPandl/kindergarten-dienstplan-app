@@ -666,7 +666,7 @@ const ConfirmModal = ({ message, onConfirm, onCancel }) => {
     // 'opacity-100' oder 'opacity-0' wird basierend auf dem isVisible-State gesetzt.
     <div className={`fixed inset-0 bg-gray-300 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 transition-opacity duration-300 ease-in-out
       ${isVisible ? 'opacity-100' : 'opacity-0'}
-      z-[25] // Der z-index, der funktioniert hat, um über dem ScheduleManagementModal zu liegen
+      z-[100] // Der z-index, der funktioniert hat, um über dem ScheduleManagementModal zu liegen
     `}>
       {/* Innerer div: Modal-Inhalt mit Skalierungs-Animation */}
       {/* Die 'transition-transform' Klasse sorgt für den Skalierungs-Effekt. */}
@@ -853,7 +853,6 @@ const ScheduleManagementModal = ({ onClearSchedule, onExportSchedule, onImportSc
     <div className={`fixed inset-0 bg-gray-300 backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 p-4 print-hidden-modal
       transition-opacity duration-300 ease-in-out
       ${isVisible ? 'opacity-100' : 'opacity-0'}
-      z-[20]
     `}>
       <div className={`bg-white rounded-lg shadow-xl p-6 max-w-sm w-full relative
         transform transition-all duration-300 ease-in-out
@@ -969,7 +968,7 @@ const HelpModal = ({ onClose }) => {
                 <li className="pl-1"><strong>Kategorien erstellen:</strong> Wechsle zu "Kategorien verwalten (Basisblöcke)". Erstelle zum Beispiel eine Kategorie namens "Betreuung" und eine weitere namens "Verfügung". Wähle passende Farben aus.</li>
                 <li className="pl-1"><strong>Schichten im Wochenplan hinzufügen:</strong> Scrolle zum "Wochenplan"-Bereich. Klicke auf eine leere Stelle in der Zeitleiste eines Mitarbeiters. Ein kleines Menü erscheint. Wähle eine der soeben erstellten Kategorien (z.B. "Betreuung"). Der Block wird mit einer Standarddauer von 30 Minuten erstellt.</li>
                 <li className="pl-1"><strong>Schichten anpassen:</strong> Klicke und ziehe die Ränder des Blocks, um seine Dauer zu ändern. Klicke und ziehe den Block selbst, um ihn zu verschieben.</li>
-                <li className="pl-1"><strong>Speichern:</strong> Klicke oben auf den "Speichern"-Button. Deine Daten werden automatisch in der zuletzt geöffneten oder gespeicherten Datei gesichert.</li>
+                <li className="pl-1"><strong>Speichern:</strong> Klicke den Button <strong>"Daten exportieren"</strong> und speichere die Datei an einem beliebigen Ort. Klicke danach auf <strong>"Daten importieren"</strong> und wähle die eben gespeicherte Datei aus. Bestätige anschließend die nun erscheinende Browser-Meldung zum Dateizugriff. Falls du die Wahl hast, solltest du den Zugriff immer erlauben. Dies ist entscheidend, damit die App deine zuletzt verwendete Datei automatisch wiederfindet und lädt.</li>
               </ol>
               <p className="mt-2">Das war's! Du hast deinen ersten Dienstplan-Eintrag erstellt.</p>
             </div>
@@ -984,7 +983,8 @@ const HelpModal = ({ onClose }) => {
                 <li className="pl-1"><strong>Speichern:</strong> Speichert Änderungen in der zuletzt geöffneten oder gespeicherten Datei auf deinem Computer.</li>
                 <li className="pl-1"><strong>Daten exportieren:</strong> Speichert den aktuellen Dienstplan unter einem neuen Namen an einem beliebigen Ort auf deinem Computer.</li>
                 <li className="pl-1"><strong>Daten vergessen:</strong> Leert die App und entfernt die interne Verknüpfung zur zuletzt verwendeten Datei. Die Datei auf deinem Computer wird dabei <strong>NICHT gelöscht</strong>.</li>
-                <li className="pl-1"><strong>Persistente Speicherung:</strong> Damit deine Daten automatisch geladen werden, wenn du die App erneut öffnest, musst du deinem Browser die Berechtigung zur persistenten Speicherung erteilen. Klicke dafür auf das <strong>Schloss-Symbol</strong> in der Adressleiste deines Browsers (neben der URL). Wähle dort die Option <strong>"Dateien bearbeiten"</strong> aus und stelle sicher, dass <strong>"Bei jedem Besuch erlauben"</strong> aktiviert ist. Dies ist entscheidend, damit die App deine zuletzt verwendete Datei automatisch wiederfindet und lädt. Möglicherweise fragt dich dein Browser beim Speichern oder Importieren von Daten, ob du das Bearbeiten von Dateien zulassen möchtest.</li>
+                <li className="pl-1"><strong>Persistente Speicherung:</strong> Damit deine Daten automatisch geladen werden, wenn du die App erneut öffnest, ist es wichtig, deinem Browser die Berechtigung zur persistenten Speicherung zu erteilen. Hierfür exportierst du zunächst deine Daten über den Button <strong>"Daten exportieren"</strong> und speicherst die Datei an einem beliebigen Ort. Klicke danach auf <strong>"Daten importieren"</strong> und wähle die eben gespeicherte Datei aus. Bestätige anschließend die nun erscheinende Browser-Meldung zum Dateizugriff. Falls du die Wahl hast, solltest du den Zugriff immer erlauben. Dies ist entscheidend, damit die App deine zuletzt verwendete Datei automatisch wiederfindet und lädt.</li>
+                <li className="pl-1"><strong>Falls das nicht funktioniert:</strong> Klicke auf das <strong>Schloss-Symbol</strong> in der Adressleiste deines Browsers (neben der URL). Wähle dort die Option <strong>"Dateien bearbeiten"</strong> aus und stelle sicher, dass <strong>"Bei jedem Besuch erlauben"</strong> aktiviert ist.</li>
               </ul>
             </div>
           </details>
@@ -1121,6 +1121,15 @@ const HelpModal = ({ onClose }) => {
 
 // --- Release Notes Data ---
 export const RELEASE_NOTES = [
+  {
+    "version": "Beta 1.9.1",
+    "optionalTitle": "Kleines Bugfix Update",
+    "whatsNew": [],
+    "bugFixes": [
+      "Arbeitszeitwarnungen erscheinen nun nicht mehr über dem geöffneten Wochenplan verwalten-Fenster."
+    ],
+    "adjustments": []
+  },
   {
     "version": "Beta 1.9.0",
     "optionalTitle": "Ein Hauch von Eleganz",
@@ -1781,7 +1790,7 @@ function App() {
   // IMPORTANT: Update this version string whenever you release a new version
   // for which you want to show the "What's New" popup.
   // Use a semantic versioning scheme (major.minor.patch) for easy comparison.
-  const CURRENT_APP_VERSION = "Beta 1.9.0"; // Updated version string
+  const CURRENT_APP_VERSION = "Beta 1.9.1"; // Updated version string
 
   const [message, setMessage] = useState(''); // Dein bestehender message state
   const [messageType, setMessageType] = useState(''); // Dein bestehender messageType state (für Farben)
