@@ -1122,6 +1122,16 @@ const HelpModal = ({ onClose }) => {
 // --- Release Notes Data ---
 export const RELEASE_NOTES = [
   {
+    "version": "Beta 1.9.2",
+    "optionalTitle": "Wochenübersicht Korrektur",
+    "whatsNew": [],
+    "bugFixes": [
+      "Zusammenfassungen aller Basisblöcke werden nun wieder angezeigt, nicht nur für Gesamt und Verfügung.",
+      "Ein kleiner Schreibfehler in der Wochenübersicht wurde korrigiert."
+    ],
+    "adjustments": []
+  },
+  {
     "version": "Beta 1.9.1",
     "optionalTitle": "Kleines Bugfix Update",
     "whatsNew": [],
@@ -1790,7 +1800,7 @@ function App() {
   // IMPORTANT: Update this version string whenever you release a new version
   // for which you want to show the "What's New" popup.
   // Use a semantic versioning scheme (major.minor.patch) for easy comparison.
-  const CURRENT_APP_VERSION = "Beta 1.9.1"; // Updated version string
+  const CURRENT_APP_VERSION = "Beta 1.9.2"; // Updated version string
 
   const [message, setMessage] = useState(''); // Dein bestehender message state
   const [messageType, setMessageType] = useState(''); // Dein bestehender messageType state (für Farben)
@@ -2317,10 +2327,18 @@ useEffect(() => {
             weeklyTotalBreakMinutes += totalBreakMinutes;
             weeklyTotalDisposalMinutes += totalDisposalMinutes; // Accumulate daily disposal minutes
 
-            // Accumulate work minutes only for presence days if employee is not 'normal' or 'zusatzkraft'
-            if ((employee.type === 'normal' || employee.type === 'zusatzkraft') || (employee.presenceDays || []).includes(day)) {
-                weeklyWorkMinutesOnPresenceDays += totalWorkMinutes;
-            }
+
+          Object.entries(categoryTotals).forEach(([catKey, mins]) => {
+            if (catKey === 'PAUSE') return; // falls Pausen nicht als Block anzeigen
+            weeklyCategoryTotals[catKey] = (weeklyCategoryTotals[catKey] || 0) + mins;
+          });
+
+          if (
+            (employee.type === 'normal' || employee.type === 'zusatzkraft') ||
+            (employee.presenceDays || []).includes(day)
+          ) {
+            weeklyWorkMinutesOnPresenceDays += totalWorkMinutes;
+          }
         });
 
         const contractedMinutesPerWeek = employee.contractedHoursPerWeek * 60;
@@ -2372,7 +2390,7 @@ useEffect(() => {
                 if (presenceDayDiscrepancy > toleranceMinutes) {
                     weeklyWarnings.push(`Anwesenheitstage: +${formatMinutesToDecimalHours(presenceDayDiscrepancy)}`);
                 } else if (presenceDayDiscrepancy < -toleranceMinutes) {
-                    weeklyWarnings.push(`Anwesenheitage: -${formatMinutesToDecimalHours(Math.abs(presenceDayDiscrepancy))}`);
+                    weeklyWarnings.push(`Anwesenheitstage: -${formatMinutesToDecimalHours(Math.abs(presenceDayDiscrepancy))}`);
                 }
             }
         }
