@@ -37,17 +37,17 @@ const BaseModal = ({
   return createPortal(
     <div
       style={{ zIndex }}
-      className={`fixed inset-0 flex items-center justify-center p-4 transition-all duration-300 ease-out ${
-        isDimmed ? 'bg-black/30 backdrop-blur-[2px]' : 'bg-black/50 backdrop-blur-md'
+      className={`fixed inset-0 flex items-center justify-center p-4 transition-all duration-200 ease-out ${
+        isDimmed ? 'bg-black/25' : 'bg-black/50 backdrop-blur-sm'
       } ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       onClick={(e) => {
         if (!isDimmed && e.target === e.currentTarget) handleClose();
       }}
     >
       <div
-        className={`bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-2xl shadow-2xl w-full ${maxWidth} ${height || 'max-h-[90vh]'} flex flex-col relative transform transition-all duration-300 ease-out border border-gray-200/80 dark:border-gray-700/80 ${
+        className={`bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-2xl shadow-2xl w-full ${maxWidth} ${height || 'max-h-[90vh]'} flex flex-col relative transform transition-all duration-200 ease-out border border-gray-200/80 dark:border-gray-700/80 ${
           isDimmed
-            ? 'scale-[0.93] opacity-70 translate-y-[-10px] pointer-events-none select-none blur-[0.5px] brightness-95'
+            ? 'scale-[0.94] opacity-65 translate-y-[-8px] pointer-events-none select-none brightness-95'
             : isVisible
             ? 'scale-100 opacity-100 translate-y-0'
             : 'scale-95 opacity-0 translate-y-2'

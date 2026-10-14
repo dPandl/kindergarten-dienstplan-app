@@ -11,6 +11,7 @@ const CategoryFormModalContent = ({
   handleCancelEditCategory,
   disposalTimeCategory,
   careCategory,
+  leadershipReleaseCategory,
 }) => {
   return (
     <div className="space-y-5">
@@ -44,7 +45,7 @@ const CategoryFormModalContent = ({
         </div>
       </div>
 
-      {/* 2. Besondere Eigenschaften (Verfügung / Betreuung) */}
+      {/* 2. Besondere Eigenschaften (Verfügung / Betreuung / Leitungsfreistellung) */}
       <div className="p-4 bg-gray-50 dark:bg-gray-750 rounded-xl border border-gray-200 dark:border-gray-700 space-y-3">
         <label
           className={`flex items-start gap-2.5 select-none ${
@@ -93,6 +94,32 @@ const CategoryFormModalContent = ({
               Markiert die primäre Kinderbetreuungszeit in den Berechnungen und Warnungen.
               {careCategory && !editingCategoryId && (
                 <span className="text-red-500 ml-1 font-medium">(Bereits an "{careCategory.name}" vergeben)</span>
+              )}
+            </p>
+          </div>
+        </label>
+
+        <label
+          className={`flex items-start gap-2.5 pt-3 border-t border-gray-200 dark:border-gray-700 select-none ${
+            leadershipReleaseCategory && !editingCategoryId ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+          }`}
+        >
+          <input
+            type="checkbox"
+            name="isLeadershipReleaseCategory"
+            checked={newCategory.isLeadershipReleaseCategory}
+            onChange={(e) => setNewCategory((prev) => ({ ...prev, isLeadershipReleaseCategory: e.target.checked }))}
+            className="w-4 h-4 mt-0.5 text-blue-600 rounded focus:ring-blue-400 cursor-pointer"
+            disabled={leadershipReleaseCategory && leadershipReleaseCategory.id !== editingCategoryId}
+          />
+          <div>
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+              Als Leitungsfreistellungs-Kategorie verwenden
+            </span>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Wird für die automatische Berechnung und Einplanung der Leitungsfreistellung herangezogen.
+              {leadershipReleaseCategory && !editingCategoryId && (
+                <span className="text-red-500 ml-1 font-medium">(Bereits an "{leadershipReleaseCategory.name}" vergeben)</span>
               )}
             </p>
           </div>

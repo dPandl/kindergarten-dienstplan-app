@@ -1,185 +1,581 @@
-import React from 'react';
-import { HelpCircle, AlertCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import {
+  HelpCircle,
+  AlertCircle,
+  Search,
+  FileText,
+  Users,
+  Layers,
+  Tag,
+  Clock,
+  Sparkles,
+  ShieldCheck,
+  Building2,
+  Printer,
+  Wand2,
+  ChevronDown,
+  CalendarClock,
+  CheckCircle2,
+  X,
+  Lock,
+  Star,
+} from 'lucide-react';
 import BaseModal from '../common/BaseModal';
 
+const CATEGORIES = [
+  { id: 'all', label: 'Alle Themen' },
+  { id: 'start', label: '🚀 Erste Schritte' },
+  { id: 'ribbon', label: '📁 Menüband & Datei' },
+  { id: 'team', label: '👥 Team & Wünsche' },
+  { id: 'facility', label: '🏢 Einrichtung & Teams' },
+  { id: 'assistant', label: '🪄 Plan-Assistent' },
+  { id: 'schedule', label: '📅 Wochenplan' },
+  { id: 'rules', label: '⚖️ Gesetz & Warnungen' },
+  { id: 'print', label: '🖨️ Drucken & Optik' },
+];
+
+const SECTIONS = [
+    {
+      id: 'quickstart',
+      category: 'start',
+      icon: Sparkles,
+      iconColor: 'text-amber-500 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/60',
+      badge: 'Empfohlen',
+      badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300',
+      title: 'Kurzanleitung: In 6 Schritten zum ersten Dienstplan',
+      content: (
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            Hier eine schnelle Schritt-für-Schritt-Anleitung, um deinen ersten Dienstplan im modernen Menüband-Design zu erstellen:
+          </p>
+          <div className="space-y-2.5">
+            <div className="flex gap-3 p-2.5 rounded-xl bg-white/70 dark:bg-gray-800/70 border border-gray-200/80 dark:border-gray-700/80">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center">1</span>
+              <div className="text-sm">
+                <strong className="text-gray-900 dark:text-gray-100">Gruppen anlegen:</strong> Klicke im Menüband auf den Tab <strong>„Gruppen“</strong> ➔ <em>Gruppe hinzufügen</em>. Lege Name (z.&nbsp;B. „Sonnenschein“), Gruppenfarbe, Öffnungszeiten und das Mindestpersonal fest.
+              </div>
+            </div>
+
+            <div className="flex gap-3 p-2.5 rounded-xl bg-white/70 dark:bg-gray-800/70 border border-gray-200/80 dark:border-gray-700/80">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center">2</span>
+              <div className="text-sm">
+                <strong className="text-gray-900 dark:text-gray-100">Mitarbeiter hinzufügen:</strong> Wechsle zum Tab <strong>„Mitarbeiter“</strong> ➔ <em>Mitarbeiter hinzufügen</em>. Trage Name, vertragliche Wochenstunden, Gruppe und den Mitarbeitertyp ein (z.&nbsp;B. <em>Normaler Mitarbeiter</em>, <em>Leitung</em>, <em>stellv. Leitung</em>, <em>Zusatzkraft</em> oder <em>Auszubildender</em> mit Schultagen).
+              </div>
+            </div>
+
+            <div className="flex gap-3 p-2.5 rounded-xl bg-white/70 dark:bg-gray-800/70 border border-gray-200/80 dark:border-gray-700/80">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center">3</span>
+              <div className="text-sm">
+                <strong className="text-gray-900 dark:text-gray-100">Leitungsfreistellung &amp; Wünsche:</strong> Bei Leitungskräften kann direkt eine prozentuale Leitungsfreistellung hinterlegt werden. Über <em>„Wünsche“</em> in der Mitarbeiter-Übersicht kannst du persönliche Wunschzeiten (⭐) oder feste Grenzen (🔒) für Wochentage erfassen.
+              </div>
+            </div>
+
+            <div className="flex gap-3 p-2.5 rounded-xl bg-white/70 dark:bg-gray-800/70 border border-gray-200/80 dark:border-gray-700/80">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center">4</span>
+              <div className="text-sm">
+                <strong className="text-gray-900 dark:text-gray-100">Schichtblöcke prüfen:</strong> Unter <strong>„Schichtblöcke“</strong> stehen deine Basisblöcke bereit (<em>Betreuung</em>, <em>Verfügungszeit</em>, <em>Leitungsfreistellung</em>). Hier kannst du auch eigene Unterkategorien mit individuellen Farben ergänzen (z.&nbsp;B. „Waldtag“, „Sprachförderung“).
+              </div>
+            </div>
+
+            <div className="flex gap-3 p-2.5 rounded-xl bg-white/70 dark:bg-gray-800/70 border border-gray-200/80 dark:border-gray-700/80">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center">5</span>
+              <div className="text-sm">
+                <strong className="text-gray-900 dark:text-gray-100">Schichten im Wochenplan anlegen:</strong> Klicke im Wochenplan auf eine freie Stelle in der Zeitleiste eines Mitarbeiters. Wähle im Farbauswahl-Popup die gewünschte Kategorie. Ziehe den Block zum Verschieben oder ziehe an den Kanten, um die Dauer im 15-Minuten-Raster flexibel anzupassen.
+              </div>
+            </div>
+
+            <div className="flex gap-3 p-2.5 rounded-xl bg-white/70 dark:bg-gray-800/70 border border-gray-200/80 dark:border-gray-700/80">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center">6</span>
+              <div className="text-sm">
+                <strong className="text-gray-900 dark:text-gray-100">Speichern &amp; Dateistatus:</strong> Achte auf das Status-Badge oben in der Titelleiste: Zeigt es <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300">⚠️ Keine Datei verknüpft</span>, liegen deine Änderungen nur im temporären Browser-Cache. Klicke im Tab <strong>„Datei“</strong> auf <strong>„Speichern unter...“</strong>, um eine feste <span className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded">.dienstplan</span>-Datei auf deinem PC anzulegen. Sobald <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300">● Datei verknüpft</span> leuchtet, kannst du Änderungen jederzeit direkt mit <strong>„Speichern“</strong> (oder <kbd className="px-1 py-0.5 text-[10px] bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">Strg + S</kbd>) in die Datei schreiben.
+              </div>
+            </div>
+          </div>
+          <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2">
+            <CheckCircle2 size={16} className="flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span><strong>Fertig!</strong> Dein erster Dienstplan ist einsatzbereit und wird lokal geschützt auf deinem Computer gespeichert.</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'ribbon',
+      category: 'ribbon',
+      icon: FileText,
+      iconColor: 'text-blue-600 bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60',
+      badge: 'Office-Design',
+      badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300',
+      title: 'Menüband & Navigation (Ribbon Bar)',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p className="text-gray-600 dark:text-gray-300">
+            Das Menüband am oberen Bildschirmrand bietet schnellen Zugriff auf alle Werkzeuge im vertrauten Stil moderner Office-Programme. Es gliedert sich in 7 übersichtliche Farb-Tabs:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div className="p-2.5 rounded-xl border border-blue-200/80 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20">
+              <span className="font-bold text-blue-600 dark:text-blue-400 block mb-1">1. Datei (Blau)</span>
+              <span>Speichern, Speichern unter..., Datei öffnen, Wochenpläne verwalten &amp; Daten vergessen.</span>
+            </div>
+            <div className="p-2.5 rounded-xl border border-indigo-200/80 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-indigo-950/20">
+              <span className="font-bold text-indigo-600 dark:text-indigo-400 block mb-1">2. Mitarbeiter (Indigo)</span>
+              <span>Neues Teammitglied anlegen, Mitarbeiter-Übersicht und wöchentliche Krankmeldungen.</span>
+            </div>
+            <div className="p-2.5 rounded-xl border border-violet-200/80 dark:border-violet-900/40 bg-violet-50/50 dark:bg-violet-950/20">
+              <span className="font-bold text-violet-600 dark:text-violet-400 block mb-1">3. Gruppen (Violett)</span>
+              <span>Gruppen anlegen &amp; verwalten sowie <strong>Einrichtungseinstellungen</strong> (Teamsitzungen &amp; Regeln).</span>
+            </div>
+            <div className="p-2.5 rounded-xl border border-purple-200/80 dark:border-purple-900/40 bg-purple-50/50 dark:bg-purple-950/20">
+              <span className="font-bold text-purple-600 dark:text-purple-400 block mb-1">4. Schichtblöcke (Lila)</span>
+              <span>Hauptblöcke (Betreuung, Verfügung, etc.) und individuelle Unterblöcke hinzufügen &amp; organisieren.</span>
+            </div>
+            <div className="p-2.5 rounded-xl border border-fuchsia-200/80 dark:border-fuchsia-900/40 bg-fuchsia-50/50 dark:bg-fuchsia-950/20">
+              <span className="font-bold text-fuchsia-600 dark:text-fuchsia-400 block mb-1">5. Verfügungszeiten (Fuchsia)</span>
+              <span>Berechnungsregeln für die Verfügungszeiten deiner Mitarbeiter anpassen und staffeln.</span>
+            </div>
+            <div className="p-2.5 rounded-xl border border-pink-200/80 dark:border-pink-900/40 bg-pink-50/50 dark:bg-pink-950/20">
+              <span className="font-bold text-pink-600 dark:text-pink-400 block mb-1">6. Ansicht (Pink)</span>
+              <span>Zeitleisten-Start/Endzeit anpassen, Gruppen/Mitarbeiter filtern, <em>Abwesende ausblenden</em>.</span>
+            </div>
+            <div className="p-2.5 rounded-xl border border-rose-200/80 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 sm:col-span-2">
+              <span className="font-bold text-rose-600 dark:text-rose-400 block mb-1">7. Drucken (Rose)</span>
+              <span>Druckfilter für bestimmte Gruppen oder Mitarbeiter, Wochenübersicht und Druckvorschau.</span>
+            </div>
+          </div>
+          <div className="p-2.5 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 text-xs space-y-1">
+            <div>💡 <strong>Einklappen / Erweitern:</strong> Klicke auf den Button <em>„Einklappen“</em> ganz rechts (oder erneut auf den aktuell aktiven Tab), um das Menüband einzuklappen und mehr vertikalen Platz für den Dienstplan zu gewinnen.</div>
+            <div>🏢 <strong>Kopfleiste:</strong> Zeigt den Dateistatus (<em>Gespeichert</em> in Grün / <em>Lokal</em> in Grau), die App-Version und Buttons für Dark Mode, Einstellungen, Hilfe und Support.</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'team',
+      category: 'team',
+      icon: Users,
+      iconColor: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60',
+      badge: 'Aktualisiert',
+      badgeColor: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300',
+      title: 'Mitarbeiter verwalten, Rollen & Wünsche',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p className="text-gray-600 dark:text-gray-300">
+            Verwalte dein Personal flexibel mit differenzierten Rollen, Leitungsfreistellungen und persönlichen Wünschen:
+          </p>
+          <ul className="list-disc list-outside pl-5 space-y-1.5 text-xs">
+            <li>
+              <strong>Mitarbeitertypen &amp; Rollen:</strong>
+              <div className="mt-1 space-y-1">
+                <div>• <strong>Normaler Mitarbeiter:</strong> Reguläre pädagogische Fachkraft.</div>
+                <div>• <strong>Leitung &amp; stellv. Leitung:</strong> Für Einrichtungsleitung und Stellvertretung. <em>Nur bei Auswahl dieser beiden Typen erscheint das Feld „Leitungsfreistellung (%)“!</em></div>
+                <div>• <strong>Zusatzkraft:</strong> Ergänzende Unterstützungskräfte.</div>
+                <div>• <strong>Auszubildender, FSJler, Praktikant:</strong> Ermöglicht die Auswahl fester <strong>Anwesenheitstage</strong> (z.&nbsp;B. für Berufsschultage). An Schultagen werden Mitarbeiter optisch gedimmt.</div>
+              </div>
+            </li>
+            <li>
+              <strong>Leitungsfreistellung in %:</strong> Hinterlege den prozentualen Freistellungsanteil der Leitungskraft. Der Schichtblock <em>„Leitungsfreistellung“</em> wird vom Plan-Generator automatisch auf Kosten der Betreuungszeit (nie der Verfügung) eingeplant und in der Wochenübersicht exakt gegengerechnet.
+            </li>
+            <li>
+              <strong>Individuelle Verfügungszeit (VZ):</strong> Überschreibt auf Wunsch die allgemeine Berechnungsregel für diesen Mitarbeiter.
+            </li>
+            <li>
+              <strong>Arbeitszeiten &amp; Wünsche erfassen:</strong> Klicke in der Mitarbeiter-Übersicht auf <strong>„Wünsche“</strong>. Hier kannst du pro Wochentag festlegen:
+              <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+                  <span className="font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                    <Lock size={12} /> Feste Vorgabe (Muss)
+                  </span>
+                  <span>Verbindliche Schranken (z.&nbsp;B. Kraft kann montags nur bis 14 Uhr). Wird vom Generator zwingend respektiert.</span>
+                </div>
+                <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+                  <span className="font-semibold text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                    <Star size={12} /> Unverbindlicher Wunsch (Kann)
+                  </span>
+                  <span>Persönliche Vorlieben wie Wunschfrei, Wunsch-Arbeitszeit, Früh-/Spätschicht oder VZ-Lage (vormittags/nachmittags).</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      ),
+    },
+    {
+      id: 'facility',
+      category: 'facility',
+      icon: Building2,
+      iconColor: 'text-violet-600 bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800/60',
+      badge: 'Neu',
+      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300',
+      title: 'Einrichtungseinstellungen: Teamsitzungen & Leitungsabdeckung',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p className="text-gray-600 dark:text-gray-300">
+            Im Tab <strong>„Gruppen“</strong> findest du den neuen Button <strong>„Einrichtungseinstellungen“</strong>. Hier konfigurierst du einrichtungsweite Rahmenbedingungen:
+          </p>
+          <div className="space-y-2 text-xs">
+            <div className="p-2.5 rounded-xl border border-violet-200 dark:border-violet-800/60 bg-violet-50/50 dark:bg-violet-950/20">
+              <span className="font-bold text-violet-700 dark:text-violet-300 flex items-center gap-1.5 mb-1">
+                <CalendarClock size={14} /> Teamsitzungen konfigurieren
+              </span>
+              <ul className="list-disc pl-4 space-y-1">
+                <li><strong>Art der Besprechung:</strong> Gesamteinrichtung (Generell) oder gruppenintern.</li>
+                <li><strong>Turnus:</strong> Wöchentlich oder 2-wöchentlich (alle 2 Wochen).</li>
+                <li><strong>Teilnehmerkreis:</strong> Alle Mitarbeiter (inkl. Teilzeitkräfte) oder nur Vollzeitkräfte.</li>
+                <li><strong>Automatische Berücksichtigung:</strong> Der Plan-Generator bindet Sitzungen automatisch als Schichtblöcke ein und plant Vollzeitkräfte an Tagen mit Abend-Teamsitzung nicht in den Frühdienst ein, um unzulässige Arbeitszeitspannen zu vermeiden.</li>
+              </ul>
+            </div>
+
+            <div className="p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/50 dark:bg-indigo-950/20">
+              <span className="font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5 mb-1">
+                <ShieldCheck size={14} /> Leitungsabdeckung bis Betreuungsende
+              </span>
+              <p>
+                Aktiviere diese Option, wenn an jedem Tag bis zum Ende der Öffnungszeit mindestens eine Leitung oder stellvertretende Leitung im Haus anwesend sein muss. Der Plan-Generator bevorzugt Leitungskräfte dann automatisch für den Spätdienst.
+              </p>
+            </div>
+
+            <div className="p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60">
+              <span className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5 mb-1">
+                <Tag size={14} /> Generator-Regeln
+              </span>
+              <p>
+                Definiere zusätzliche Schicht- und Zuteilungsregeln, die der automatische Dienstplan-Assistent bei der Berechnung berücksichtigen soll.
+              </p>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'assistant',
+      category: 'assistant',
+      icon: Wand2,
+      iconColor: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60',
+      badge: 'KI-Planung',
+      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300',
+      title: '🪄 Plan-Assistent: Automatische Dienstplanerstellung',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p className="text-gray-600 dark:text-gray-300">
+            Der automatische Plan-Assistent berechnet lückenlose, bedarfsgerechte Dienstpläne in Sekunden unter Beachtung aller gesetzlichen und betrieblichen Vorgaben:
+          </p>
+
+          <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl text-xs space-y-1 text-blue-900 dark:text-blue-200">
+            <strong>So aktivierst und öffnest du den Plan-Assistenten:</strong>
+            <ol className="list-decimal pl-4 space-y-0.5">
+              <li>Klicke oben rechts auf das <strong>Zahnrad (Einstellungen)</strong>.</li>
+              <li>Scrolle nach unten zu <strong>„Experimentelle Features“</strong> und aktiviere <strong>„Experimenteller Plan-Assistent“</strong>.</li>
+              <li>Gehe im Menüband auf den Tab <strong>„Datei“ ➔ „Wochenpläne“</strong>. Dort erscheint nun die Schaltfläche <strong>„Plan-Assistent öffnen“</strong>.</li>
+            </ol>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div className="p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/50 dark:bg-emerald-950/20">
+              <strong className="text-emerald-700 dark:text-emerald-300 block mb-1">Ersatzplan bei Ausfall / Krankheit</strong>
+              <span>Minimal-invasiv: Schließt Lücken durch kranke Kollegen automatisch, wandelt bei Bedarf Verfügungszeiten temporär um oder verlängert Schichten gesunder Kollegen – ohne den restlichen Plan umzuwerfen.</span>
+            </div>
+            <div className="p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/50 dark:bg-indigo-950/20">
+              <strong className="text-indigo-700 dark:text-indigo-300 block mb-1">Vollständiger Plan (Neuerstellung)</strong>
+              <span>Erzeugt einen kompletten, optimierten Wochenplan von Grund auf unter Beachtung von Mindestpersonal, Öffnungszeiten, Arbeitsverträgen, Teamsitzungen und Mitarbeiterwünschen.</span>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            🛡️ <strong>100% Sicher:</strong> Bei jeder Generierung wird automatisch ein neuer Wochenplan angelegt. Dein vorheriger Stand bleibt unangetastet erhalten.
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: 'schedule',
+      category: 'schedule',
+      icon: Clock,
+      iconColor: 'text-purple-600 bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800/60',
+      title: 'Wochenplan, Krankmeldungen & Multi-Pläne',
+      content: (
+        <div className="space-y-3 text-sm">
+          <ul className="list-disc list-outside pl-5 space-y-2 text-xs text-gray-700 dark:text-gray-300">
+            <li>
+              <strong>Schichten anpassen:</strong> Klicke auf eine freie Stelle der Zeitleiste, um einen Block zu setzen. Ziehe den Block, um ihn horizontal zu verschieben. Ziehe an den linken oder rechten Kanten, um die Dauer im 15-Minuten-Raster zu verlängern oder zu verkürzen.
+            </li>
+            <li>
+              <strong>Krankmeldungen &amp; Abwesende ausblenden:</strong> Über <em>Mitarbeiter ➔ Krankmeldungen</em> oder das rote Badge neben dem Wochentag können Kranke markiert werden. Sie werden auf der Zeitleiste durchgestrichen dargestellt. Mit der Option <strong>„Abwesende ausblenden“</strong> (Tab <em>Ansicht</em>) werden kranke Mitarbeiter sowie Teilzeitkräfte an ihren Schultagen ausgeblendet.
+            </li>
+            <li>
+              <strong>Multi-Wochenplan-Verwaltung:</strong> Direkt über dem Wochenplan kannst du per Schnellwechsler-Tabs zwischen mehreren Plänen wechseln (z.&nbsp;B. Standardplan, Ferienplan, Notgruppe). In der Wochenplan-Verwaltung (Tab <em>Datei ➔ Wochenpläne</em>) kannst du Pläne duplizieren, umbenennen oder als <span className="font-mono">.wochenplan</span> exportieren.
+            </li>
+            <li>
+              <strong>Automatische Pausen:</strong> Gesetzliche Ruhepausen nach ArbZG werden automatisch berechnet, visuell im Schichtblock markiert und von der Nettoarbeitszeit abgezogen.
+            </li>
+          </ul>
+        </div>
+      ),
+    },
+    {
+      id: 'rules',
+      category: 'rules',
+      icon: AlertCircle,
+      iconColor: 'text-rose-600 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60',
+      badge: 'Rechtssicherheit',
+      badgeColor: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300',
+      title: 'Gesetzliche Vorgaben (ArbZG) & Warnungen',
+      content: (
+        <div className="space-y-3 text-sm">
+          <p className="text-gray-600 dark:text-gray-300">
+            Die App wacht in Echtzeit über gesetzliche Vorgaben und Personalunterbesetzungen:
+          </p>
+          <div className="space-y-2 text-xs">
+            <div className="p-2.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+              <strong className="text-red-700 dark:text-red-300 flex items-center gap-1.5 mb-1">
+                <AlertCircle size={14} /> Arbeitszeitgesetz (ArbZG)
+              </strong>
+              <span>
+                Warnt mit einem roten Dreieck ⚠️ am Mitarbeiternamen, falls gesetzliche Pausen (mind. 30 Min ab 6h, mind. 45 Min ab 9h) fehlen oder die Höchstarbeitszeit von 10 Stunden überschritten wird.
+              </span>
+            </div>
+
+            <div className="p-2.5 rounded-xl border border-orange-200 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-950/20">
+              <strong className="text-orange-700 dark:text-orange-300 flex items-center gap-1.5 mb-1">
+                <ShieldCheck size={14} /> Betreuungswarnung (Unterbesetzung)
+              </strong>
+              <span>
+                Rote transparente Balken im Dienstplan markieren Zeiten, in denen weniger Mitarbeiter anwesend sind als im Mindestpersonal der Gruppe definiert. Randzeiten (z.&nbsp;B. Früh-/Spätdienst) werden dabei auf Wunsch ignoriert.
+              </span>
+            </div>
+
+            <div className="p-2.5 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20">
+              <strong className="text-amber-700 dark:text-amber-300 flex items-center gap-1.5 mb-1">
+                <Users size={14} /> Warnung bei Azubi-Alleinbetreuung
+              </strong>
+              <span>
+                Die App warnt zusätzlich, falls sich während der Betreuungszeit ausschließlich Auszubildende oder Praktikanten ohne anwesende Fachkraft in einer Gruppe befinden.
+              </span>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'print',
+      category: 'print',
+      icon: Printer,
+      iconColor: 'text-pink-600 bg-pink-50 dark:bg-pink-950/40 border-pink-200 dark:border-pink-800/60',
+      title: 'Drucken, Farblegende & Design',
+      content: (
+        <div className="space-y-3 text-sm">
+          <ul className="list-disc list-outside pl-5 space-y-1.5 text-xs text-gray-700 dark:text-gray-300">
+            <li>
+              <strong>Wochenplan-Legende:</strong> Am unteren Ende des Dienstplans schlüsselt eine kompakte Legende alle verwendeten Basisblöcke, Unterkategorien, Pausen und Verfügungszeiten mit ihren Farben auf.
+            </li>
+            <li>
+              <strong>Druckoptimierung für den Aushang:</strong> Beim Drucken (`Strg + P` oder Tab *Drucken*) werden alle Bedienelemente und Menüs ausgeblendet. Gruppenstreifen schließen nahtlos ab und die Legende wird für das Team sauber mitgedruckt.
+            </li>
+            <li>
+              <strong>Druckfilter:</strong> Im Druckdialog kannst du flexibel festlegen, ob alle Gruppen, einzelne Teams oder nur bestimmte Mitarbeiter ausgedruckt werden sollen.
+            </li>
+            <li>
+              <strong>Lebendige Hintergründe:</strong> In den Einstellungen (Zahnrad oben rechts) stehen animierte Hintergründe wie <em>Liquid Chrome</em>, <em>Gradient Mesh</em>, <em>Beams</em>, <em>Prismatic Burst</em> oder <em>Aurora</em> zur Verfügung.
+            </li>
+            <li>
+              <strong>Augenschonender Dark Mode:</strong> Ein moderner Dunkelmodus mit angenehmen Slate-Kontrasten und blendfreien Farben schont die Augen bei längeren Sitzungen.
+            </li>
+          </ul>
+        </div>
+      ),
+    },
+  ];
+
 const HelpModal = ({ onClose }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [openSections, setOpenSections] = useState({
+    'quickstart': true,
+  });
+
+  const toggleSection = (id) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const expandAll = () => {
+    const allOpen = {};
+    SECTIONS.forEach((s) => {
+      allOpen[s.id] = true;
+    });
+    setOpenSections(allOpen);
+  };
+
+  const collapseAll = () => {
+    setOpenSections({});
+  };
+
+  const filteredSections = useMemo(() => {
+    return SECTIONS.filter((sec) => {
+      const matchesCategory = selectedCategory === 'all' || sec.category === selectedCategory;
+      if (!matchesCategory) return false;
+
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      const titleMatches = sec.title.toLowerCase().includes(q);
+      const idMatches = sec.id.toLowerCase().includes(q);
+      return titleMatches || idMatches;
+    });
+  }, [searchQuery, selectedCategory]);
+
   return (
     <BaseModal
       isOpen={true}
       onClose={onClose}
       title="Anleitung & Hilfe"
       icon={HelpCircle}
-      maxWidth="max-w-3xl"
+      maxWidth="max-w-4xl"
       zIndex={110}
     >
       <div className="space-y-4 text-gray-700 dark:text-gray-200">
-        <details className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 shadow-xs">
-          <summary className="font-semibold text-lg text-gray-800 dark:text-gray-100 cursor-pointer">Kurzanleitung: Erster Dienstplan</summary>
-          <div className="mt-2 text-base">
-            <p className="mb-2">Hier eine schnelle Anleitung, um deinen ersten Dienstplan im neuen Menüband-Design zu erstellen:</p>
-            <ol className="list-decimal list-outside pl-5 space-y-1">
-              <li className="pl-1"><strong>Gruppe erstellen:</strong> Klicke im Menüband oben auf den Tab <strong>"Gruppen"</strong>. Erstelle eine neue Gruppe, z.&nbsp;B. "Regenbogenland", und wähle eine Gruppenfarbe.</li>
-              <li className="pl-1"><strong>Mitarbeiter hinzufügen:</strong> Klicke im Menüband auf <strong>"Mitarbeiter"</strong>. Gib Name, Wochenstunden und Typ ein und weise die Gruppe zu. Optional kannst du hier auch erste Mitarbeiterwünsche hinterlegen.</li>
-              <li className="pl-1"><strong>Kategorien prüfen:</strong> Unter <strong>"Schichtblöcke"</strong> findest du deine Basisblöcke (z.&nbsp;B. "Betreuung", "Verfügung") und kannst Unterkategorien mit eigenen Farben anlegen.</li>
-              <li className="pl-1"><strong>Schichten im Wochenplan anlegen:</strong> Klicke im Wochenplan auf eine freie Stelle in der Zeitleiste eines Mitarbeiters. Wähle im Popover die gewünschte Kategorie. Der Schichtblock wird erstellt.</li>
-              <li className="pl-1"><strong>Schichten anpassen:</strong> Ziehe den Block, um ihn zeitlich zu verschieben. Ziehe an den linken oder rechten Kanten, um die Dauer im 15-Minuten-Raster anzupassen.</li>
-              <li className="pl-1"><strong>Speichern:</strong> Klicke oben auf <strong>"Speichern"</strong> oder nutze <strong>"Daten exportieren"</strong>, um deine Dienstplandatei lokal zu sichern.</li>
-            </ol>
-            <p className="mt-2 text-emerald-600 dark:text-emerald-400 font-medium">Fertig! Dein erster Dienstplan ist einsatzbereit.</p>
+        
+        {/* Top-Bar: Search + Controls */}
+        <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between pb-1 border-b border-gray-200/80 dark:border-gray-800">
+          {/* Suchleiste */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="In der Anleitung suchen (z.B. Teamsitzung, Leitung, Speichern)..."
+              className="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-0.5"
+                title="Suche zurücksetzen"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
-        </details>
 
-        <details className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 shadow-xs">
-          <summary className="font-semibold text-lg text-gray-800 dark:text-gray-100 cursor-pointer">Menüband &amp; Navigation (Ribbon Bar)</summary>
-          <div className="mt-2 text-base">
-            <p>Das neue Menüband am oberen Bildschirmrand bietet schnellen Zugriff auf alle Werkzeuge im Stil moderner Office-Programme:</p>
-            <ul className="list-disc list-outside pl-5 space-y-1">
-              <li className="pl-1"><strong>Tabs:</strong> Wechsle zwischen <em>Mitarbeiter</em>, <em>Gruppen</em>, <em>Schichtblöcke</em>, <em>Verfügungszeiten</em>, <em>Ansicht</em> und <em>Drucken</em>.</li>
-              <li className="pl-1"><strong>Einklappen / Erweitern:</strong> Über den Button <strong>"Einklappen"</strong> ganz rechts (oder erneuten Klick auf den aktiven Tab) klappst du das Menüband ein, um mehr vertikalen Platz für den Wochenplan zu gewinnen.</li>
-              <li className="pl-1"><strong>Kopfleiste:</strong> Zeigt den Speichertyp (Lokal / Verbunden), die App-Version und bietet Schnellzugriff auf Dark Mode, Einstellungen, Hilfe und Feedback.</li>
-            </ul>
+          {/* Aufklappen / Zuklappen Buttons */}
+          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+            <button
+              onClick={expandAll}
+              className="text-[11px] px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition font-medium whitespace-nowrap cursor-pointer"
+            >
+              Alle aufklappen
+            </button>
+            <button
+              onClick={collapseAll}
+              className="text-[11px] px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition font-medium whitespace-nowrap cursor-pointer"
+            >
+              Alle einklappen
+            </button>
           </div>
-        </details>
+        </div>
 
-        <details className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 shadow-xs">
-          <summary className="font-semibold text-lg text-gray-800 dark:text-gray-100 cursor-pointer">Mitarbeiter verwalten &amp; Mitarbeiter-Wünsche</summary>
-          <div className="mt-2 text-base">
-            <p>Verwalte dein Personal und berücksichtige persönliche Wünsche bei der Planung:</p>
-            <ul className="list-disc list-outside pl-5 space-y-1">
-              <li className="pl-1"><strong>Grunddaten:</strong> Name, vertragliche Wochenstunden, Mitarbeitertyp (Normal, Zusatzkraft, Azubi, FSJ, Praktikant) und Anwesenheitstage (z.&nbsp;B. für Berufsschultage).</li>
-              <li className="pl-1"><strong>Individuelle Verfügungszeit:</strong> Überschreibt auf Wunsch die allgemeine Berechnungsregel für diesen Mitarbeiter.</li>
-              <li className="pl-1"><strong>Mitarbeiter-Wünsche erfassen:</strong> Klicke beim Mitarbeiter auf das Stern-Icon <strong>"Wünsche"</strong>. Du kannst für jeden Wochentag festlegen:
-                <ul className="list-circle list-outside pl-5 mt-1 space-y-0.5 text-sm">
-                  <li>🏖️ <em>Wunschfrei:</em> Bevorzugt kein Dienst an diesem Tag.</li>
-                  <li>⏰ <em>Wunsch-Arbeitszeit:</em> Bevorzugte Start- und Endzeit.</li>
-                  <li>☀️ / 🌙 <em>Verfügungszeit-Präferenz:</em> Vormittags oder nachmittags gewünscht.</li>
-                  <li>💬 <em>Notiz:</em> Freitext für besondere Absprachen.</li>
-                </ul>
-              </li>
-              <li className="pl-1"><strong>Anzeige im Wochenplan:</strong> Liegt ein Wunsch vor, erscheint neben dem Namen ein goldener Stern ⭐ (mit Tooltip) und auf der Zeitleiste wird der gewünschte Zeitraum dezent markiert – rein informativ und unverbindlich.</li>
-            </ul>
+        {/* Kategorie-Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 no-scrollbar select-none text-xs">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-3 py-1.5 rounded-xl font-medium transition whitespace-nowrap cursor-pointer ${
+                selectedCategory === cat.id
+                  ? 'bg-blue-600 text-white shadow-xs font-semibold'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Accordion Cards Liste */}
+        <div className="space-y-3 max-h-[62vh] overflow-y-auto pr-1">
+          {filteredSections.length === 0 ? (
+            <div className="p-8 text-center bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 space-y-2">
+              <Search size={32} className="mx-auto text-gray-400 dark:text-gray-500 opacity-60" />
+              <p className="text-sm font-medium">Keine passenden Themen gefunden für „{searchQuery}“.</p>
+              <button
+                onClick={() => { setSearchQuery(''); setSelectedCategory('all'); }}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+              >
+                Suche &amp; Filter zurücksetzen
+              </button>
+            </div>
+          ) : (
+            filteredSections.map((sec) => {
+              const Icon = sec.icon;
+              const isOpen = openSections[sec.id] || Boolean(searchQuery.trim());
+              return (
+                <div
+                  key={sec.id}
+                  className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
+                    isOpen
+                      ? 'bg-white/95 dark:bg-gray-800/95 border-gray-300 dark:border-gray-700 shadow-sm'
+                      : 'bg-gray-50/80 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700/80 hover:bg-gray-100/80 dark:hover:bg-gray-800/80'
+                  }`}
+                >
+                  <button
+                    onClick={() => toggleSection(sec.id)}
+                    className="w-full flex items-center justify-between p-3.5 text-left select-none cursor-pointer gap-3 group"
+                    aria-expanded={isOpen}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`p-2 rounded-xl border flex-shrink-0 transition-transform group-hover:scale-105 ${sec.iconColor}`}>
+                        <Icon size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm sm:text-base text-gray-800 dark:text-gray-100 tracking-tight">
+                            {sec.title}
+                          </span>
+                          {sec.badge && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sec.badgeColor}`}>
+                              {sec.badge}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`p-1 rounded-lg text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 transition-transform duration-200 flex-shrink-0 ${
+                      isOpen ? 'rotate-180 text-blue-600 dark:text-blue-400' : ''
+                    }`}>
+                      <ChevronDown size={18} />
+                    </div>
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-4 pb-4 pt-1 border-t border-gray-100 dark:border-gray-700/60 animate-fadeIn">
+                      {sec.content}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer / Status */}
+        <div className="pt-3 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">
+              Dienstplan App vBeta 2.0.3
+            </span>
+            <span>Entwickelt für Kitas und soziale Einrichtungen.</span>
           </div>
-        </details>
 
-        <details className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 shadow-xs">
-          <summary className="font-semibold text-lg text-gray-800 dark:text-gray-100 cursor-pointer">Krankmeldungen &amp; Abwesenheitsfilter</summary>
-          <div className="mt-2 text-base">
-            <p>Reagiere schnell und übersichtlich auf Personalausfälle:</p>
-            <ul className="list-disc list-outside pl-5 space-y-1">
-              <li className="pl-1"><strong>Mitarbeiter krankmelden:</strong> Klicke im Menüband auf <strong>"Krankmelden"</strong> oder auf das rote Badge neben dem Wochentag. Setze einfach ein Häkchen bei den betroffenen Tagen des Mitarbeiters.</li>
-              <li className="pl-1"><strong>Optische Hervorhebung:</strong> Kranke Mitarbeiter werden in der Zeitleiste durchgestrichen und dezent gedimmt dargestellt.</li>
-              <li className="pl-1"><strong>Abwesende ausblenden:</strong> Aktiviere im Tab <em>Ansicht</em> oder in der Wochenplan-Leiste die Option <strong>"Abwesende ausblenden"</strong>. Kranke Mitarbeiter sowie Teilzeitkräfte an ihren Schultagen werden für diesen Tag komplett aus der Liste ausgeblendet, sodass nur das verfügbare Team sichtbar ist.</li>
-            </ul>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-xl shadow-md transition hover:scale-105 duration-200 active:scale-95 text-xs sm:text-sm cursor-pointer"
+            >
+              Schließen
+            </button>
           </div>
-        </details>
+        </div>
 
-        <details className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 shadow-xs">
-          <summary className="font-semibold text-lg text-gray-800 dark:text-gray-100 cursor-pointer">Wochenplan &amp; Multi-Plan-Verwaltung</summary>
-          <div className="mt-2 text-base">
-            <p>Plane flexibel mit mehreren Plänen in einer einzigen Datei:</p>
-            <ul className="list-disc list-outside pl-5 space-y-1">
-              <li className="pl-1"><strong>Schnellwechsler-Tabs:</strong> Direkt über dem Plan kannst du über Tabs zwischen verschiedenen Wochenplänen (z.&nbsp;B. Standardwoche, Notbetreuung, Ferienplan) wechseln.</li>
-              <li className="pl-1"><strong>Plan duplizieren:</strong> Kopiere den aktuellen Plan mit einem Klick, um z.&nbsp;B. auf Basis des Standardplans sofort Vertretungen für eine Krankheitswoche zu planen.</li>
-              <li className="pl-1"><strong>Wochenplan-Verwaltung (Zahnrad):</strong> Verwalte alle Pläne übersichtlich, benenne sie um, exportiere einzelne Pläne oder lösche nicht mehr benötigte Varianten.</li>
-              <li className="pl-1"><strong>Schichtblöcke bearbeiten:</strong> Klicke auf Schichten, um sie zu bearbeiten, einer anderen Gruppe zuzuweisen oder zu löschen. Pausenzeiten und Arbeitszeiten werden automatisch in Echtzeit berechnet.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 shadow-xs">
-          <summary className="font-semibold text-lg text-gray-800 dark:text-gray-100 cursor-pointer">Wochenplan-Legende &amp; Drucken</summary>
-          <div className="mt-2 text-base">
-            <p>Für maximale Übersicht am Bildschirm und auf Papier:</p>
-            <ul className="list-disc list-outside pl-5 space-y-1">
-              <li className="pl-1"><strong>Neue Wochenplan-Legende:</strong> Am unteren Ende des Wochenplans schlüsselt eine kompakte Legende alle verwendeten Basisblöcke, Unterkategorien, Pausen und Verfügungszeiten mit ihren Farben auf.</li>
-              <li className="pl-1"><strong>Druckoptimierung:</strong> Beim Drucken wird der Plan pixelgenau aufbereitet – störende Bedienelemente werden ausgeblendet, Gruppenbalken schließen nahtlos ab und die Legende wird für den Aushang sauber mitgedruckt.</li>
-              <li className="pl-1"><strong>Druckfilter:</strong> Wähle im Druckdialog, ob du alle Gruppen oder nur bestimmte Gruppen/Mitarbeiter sowie die Wochenübersicht drucken möchtest.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 shadow-xs">
-          <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Design, Hintergründe &amp; Augenschonender Dark Mode</summary>
-          <div className="mt-2 text-base">
-            <p>Passe die Optik nach deinem Geschmack an:</p>
-            <ul className="list-disc list-outside pl-5 space-y-1">
-              <li className="pl-1"><strong>Lebendige Hintergründe:</strong> Öffne die Einstellungen (Zahnrad oben rechts). Wähle aus modernen animierten Hintergründen wie <em>Liquid Chrome</em>, <em>Gradient Mesh</em>, <em>Beams</em>, <em>Prismatic Burst</em> oder <em>Aurora</em>.</li>
-              <li className="pl-1"><strong>Geschwindigkeit &amp; Farbpaletten:</strong> Passe das Tempo der Animationen an oder wähle individuelle Farbverläufe.</li>
-              <li className="pl-1"><strong>Augenschonender Dark Mode:</strong> Ein komplett überarbeiteter Dunkelmodus mit angenehmen Slate-Kontrasten, blendfreien Farben und sauber abgestimmten Gruppenstreifen schont die Augen bei längeren Planungssitzungen.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 shadow-xs">
-          <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Gruppen verwalten &amp; Betreuungsregeln</summary>
-          <div className="mt-2 text-base">
-            <p>Organisiere Gruppen, Öffnungszeiten und Betreuungsvorgaben:</p>
-            <ul className="list-disc list-outside pl-5 space-y-1">
-              <li className="pl-1"><strong>Öffnungszeiten:</strong> Hinterlege die Betreuungszeiten deiner Gruppen pro Wochentag.</li>
-              <li className="pl-1"><strong>Randzeiten:</strong> Definiere Übergangs- oder Randzeiten (z.&nbsp;B. Früh- oder Spätdienst), in denen Unterbesetzungen erlaubt sind und keine roten Warnungen erzeugt werden.</li>
-              <li className="pl-1"><strong>Mindestpersonal:</strong> Lege fest, wie viele Mitarbeiter der Betreuungskategorie gleichzeitig anwesend sein müssen.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 shadow-xs">
-          <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Kategorien &amp; Unterkategorien</summary>
-          <div className="mt-2 text-base">
-            <p>Baue dein modulares Schichtsystem auf:</p>
-            <ul className="list-disc list-outside pl-5 space-y-1">
-              <li className="pl-1"><strong>Basisblöcke:</strong> Hauptkategorien wie "Betreuung" (für Besetzungsregeln), "Verfügung" (für VZ-Berechnung) oder eigene Zeiten.</li>
-              <li className="pl-1"><strong>Unterkategorien:</strong> Spezifische Aktivitäten (z.&nbsp;B. "Waldgruppe", "Elterngespräch", "Sprachförderung") mit eigener Farbgebung auf der Zeitleiste.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 shadow-xs">
-          <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Warnungen &amp; Gesetzliche Vorgaben</summary>
-          <div className="mt-2 text-base">
-            <p>Die App wacht über gesetzliche und betriebliche Vorgaben:</p>
-            <ul className="list-disc list-outside pl-5 space-y-1">
-              <li className="pl-1"><strong>Arbeitszeitgesetz (<AlertCircle className="inline-block w-4 h-4 text-red-500" />):</strong> Warnt bei fehlenden gesetzlichen Ruhepausen oder Überschreitung der Höchstarbeitszeit.</li>
-              <li className="pl-1"><strong>Betreuungswarnung:</strong> Rote transparente Bereiche markieren Unterbesetzungen während der Kernöffnungszeiten.</li>
-              <li className="pl-1"><strong>Wochenübersicht:</strong> Zeigt Über-/Unterstunden, Verfügungszeit-Soll und Diskrepanzen auf einen Blick.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 shadow-xs">
-          <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Datenverwaltung &amp; Speichern</summary>
-          <div className="mt-2 text-base">
-            <p>Volle Datensicherheit ohne Cloud-Zwang:</p>
-            <ul className="list-disc list-outside pl-5 space-y-1">
-              <li className="pl-1"><strong>Lokale Dateien:</strong> Deine Daten bleiben zu 100 % lokal auf deinem Rechner in einer kompakten <span className="font-mono text-sm">.dienstplan</span>-Datei.</li>
-              <li className="pl-1"><strong>Automatisches Speichern:</strong> Nach dem ersten Öffnen oder Speichern synchronisiert die App Änderungen direkt mit deiner Datei.</li>
-              <li className="pl-1"><strong>Export &amp; Backup:</strong> Du kannst jederzeit Sicherheitskopien erstellen oder den Dienstplan auf andere Geräte übertragen.</li>
-            </ul>
-          </div>
-        </details>
-
-        <details className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 shadow-xs">
-          <summary className="font-semibold text-lg text-gray-800 cursor-pointer">Feedback &amp; Support</summary>
-          <div className="mt-2 text-base">
-            <p>Deine Meinung und Wünsche gestalten die App aktiv mit:</p>
-            <ul className="list-disc list-outside pl-5 space-y-1">
-              <li className="pl-1"><strong>Direkte E-Mail:</strong> Klicke oben rechts auf <strong>"Feedback &amp; Support"</strong>.</li>
-              <li className="pl-1"><strong>Keine Einrichtung nötig:</strong> Gib deine Nachricht ein – beim Klick auf "E-Mail senden" öffnet sich automatisch dein Standard-Mailprogramm mit vorausgefülltem Text und Betreff. Du musst nur noch auf Absenden klicken!</li>
-            </ul>
-          </div>
-        </details>
-
-        <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-          Dienstplan App vBeta 2.0.0 – Entwickelt für Kitas und soziale Einrichtungen.
-        </p>
-      </div>
-
-      <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-        <button
-          onClick={onClose}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-xl shadow-md transition hover:scale-105 duration-200 active:scale-95"
-        >
-          Schließen
-        </button>
       </div>
     </BaseModal>
   );
@@ -187,6 +583,45 @@ const HelpModal = ({ onClose }) => {
 
 // --- Release Notes Data ---
 export const RELEASE_NOTES = [
+  {
+    "version": "Beta 2.0.3",
+    "optionalTitle": "Leitungsfreistellung & Speicherstatus",
+    "whatsNew": [
+      "<strong>Mitarbeiter-Typen Leitung & stellv. Leitung:</strong> <br />In den Mitarbeiter-Stammdaten kann nun gezielt zwischen „Normaler Mitarbeiter“, „Leitung“, „stellv. Leitung“, „Zusatzkraft“, „Auszubildender“, „FSJler“ und „Praktikant“ gewählt werden. Das Feld für die prozentuale Leitungsfreistellung wird passgenau nur bei Leitungskräften angezeigt.",
+      "<strong>Dateiverknüpfung & Speicherwarnung:</strong> <br />Die Menüleiste warnt nun unübersehbar mit einem gelben Hinweis („Keine Datei verknüpft“), wenn der Plan noch nicht als Datei gesichert wurde. Bei verknüpfter Datei wird der Status transparent angezeigt."
+    ],
+    "bugFixes": [
+      "<strong>Performance & flüssige Menüs:</strong> <br />Dropdowns und Dialoge reagieren nun ohne spürbare Eingabelatenz und öffnen sich absolut verzögerungsfrei.",
+      "<strong>Updateverlauf-Sortierung:</strong> <br />Ein Problem behoben, durch das 2.x.x-Versionen im Updateverlauf unter älteren Versionen angezeigt wurden.",
+      "<strong>Fixierte Navigationsleisten im Updateverlauf:</strong> <br />Schließen- und Zurück-Buttons bleiben nun dauerhaft fixiert und scrollen nicht mehr mit."
+    ],
+    "adjustments": [
+      "<strong>Farbanpassungen im Ribbon-Menü:</strong> <br />Die Farben der Schaltflächen und Steuerelemente im Ribbon-Menü wurden an das Farbschema des jeweiligen Tabs angepasst und harmonisiert.",
+      "<strong>Browser-Kontextmenü deaktiviert:</strong> <br />Das native Browser-Kontextmenü bei Rechtsklick wurde für ein reines App-Gefühl unterbunden (in Texteingabefeldern bleibt es für Kopieren/Einfügen aktiv).",
+      "<strong>Interne Anleitung & Hilfe:</strong> <br />Vollständige Überarbeitung und Modernisierung der internen Anleitung & Hilfe mit Echtzeit-Suche und Themen-Kategorien."
+    ]
+  },
+  {
+    "version": "Beta 2.0.2",
+    "optionalTitle": "Automatischer Dienstplan-Generator & Azubi-Warnung",
+    "whatsNew": [
+      "<strong>Experimenteller Plan-Assistent:</strong> <br />In den Einstellungen gibt es nun einen neuen Bereich für \"Experimentelle Features\". Dort kann der \"Automatische Dienstplan-Generator\" aktiviert werden, mit dem man einen Dienstplan automatisch erstellen lassen kann. Dieser lässt sich dann in der Wochenplanverwaltung abrufen.",
+      "<strong>Warnung bei Azubi-Alleinbetreuung:</strong> <br />Die App warnt nun zusätzlich, falls sich während der Betreuungszeit ausschließlich Auszubildende in einer Gruppe befinden."
+    ],
+    "bugFixes": [],
+    "adjustments": []
+  },
+  {
+    "version": "Beta 2.0.1",
+    "optionalTitle": "Blockmenü Optimierungen & Fehlerbehebungen",
+    "whatsNew": [],
+    "bugFixes": [
+      "Ein Problem wurde behoben, durch das sich das Blockmenü beim Anklicken nach dem Herunterscrollen nicht korrekt an der Mausposition geöffnet hat."
+    ],
+    "adjustments": [
+      "Das Design der Blockmenüs im Wochenplan wurde optimiert, sodass es sowohl im Dark Mode als auch im Bright Mode perfekt zur Geltung kommt und optimal lesbar ist."
+    ]
+  },
   {
     "version": "Beta 2.0.0",
     "optionalTitle": "Das große Update: Redesign, Wünsche & Hintergründe",

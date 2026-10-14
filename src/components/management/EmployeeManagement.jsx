@@ -1,5 +1,6 @@
 import React from 'react';
 import { WEEK_DAYS_PLAN } from '../../constants/scheduleConstants';
+import CustomSelect from '../common/CustomSelect';
 
 const EmployeeManagement = ({
   isEmployeesSectionMinimized,
@@ -7,7 +8,6 @@ const EmployeeManagement = ({
   isModal = false,
   editingEmployeeId,
   newEmployee,
-  setNewEmployee,
   handleEmployeeChange,
   handleAddEmployee,
   handleCancelEditEmployee,
@@ -73,36 +73,54 @@ const EmployeeManagement = ({
                       step="0.5"
                       onFocus={(e) => e.target.select()}
                     />
-                    <select
-                      name="groupId"
-                      value={newEmployee.groupId}
-                      onChange={handleEmployeeChange}
-                      className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 col-span-full sm:col-span-1 cursor-pointer"
-                    >
-                      <option value="">Gruppe auswählen (optional)</option>
-                      {groups.map(group => (
-                        <option key={group.id} value={group.id}>{group.name}</option>
-                      ))}
-                    </select>
-
                     {/* New: Employee Type Selection */}
-                    <select
+                    <CustomSelect
                       name="type"
-                      value={newEmployee.type}
+                      value={newEmployee.type || 'normal'}
                       onChange={handleEmployeeChange}
-                      className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 col-span-full sm:col-span-1 cursor-pointer"
-                    >
-                      <option value="normal">Normaler Mitarbeiter</option>
-                      <option value="zusatzkraft">Zusatzkraft</option> {/* Added Zusatzkraft */}
-                      <option value="apprentice">Auszubildender</option>
-                      <option value="fsj">FSJler</option>
-                      <option value="intern">Praktikant</option>
-                    </select>
+                      options={[
+                        { value: 'normal', label: 'Normaler Mitarbeiter' },
+                        { value: 'leitung', label: 'Leitung' },
+                        { value: 'stellv_leitung', label: 'stellv. Leitung' },
+                        { value: 'zusatzkraft', label: 'Zusatzkraft' },
+                        { value: 'apprentice', label: 'Auszubildender' },
+                        { value: 'fsj', label: 'FSJler' },
+                        { value: 'intern', label: 'Praktikant' }
+                      ]}
+                      className="col-span-full sm:col-span-1"
+                    />
+
+                    <CustomSelect
+                      name="groupId"
+                      value={newEmployee.groupId || ''}
+                      onChange={handleEmployeeChange}
+                      placeholder="Gruppe auswählen (optional)"
+                      options={[
+                        { value: '', label: 'Gruppe auswählen (optional)' },
+                        ...groups.map(group => ({ value: group.id, label: group.name }))
+                      ]}
+                      className="col-span-full sm:col-span-1"
+                    />
+
+                    {/* Leitungsfreistellung nur anzeigen wenn Leitung oder stellv. Leitung */}
+                    {(newEmployee.type === 'leitung' || newEmployee.type === 'stellv_leitung') && (
+                      <input
+                        type="number"
+                        name="leadershipReleasePercent"
+                        value={newEmployee.leadershipReleasePercent === 0 ? '' : (newEmployee.leadershipReleasePercent ?? '')}
+                        onChange={handleEmployeeChange}
+                        className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 col-span-full sm:col-span-1"
+                        placeholder="Leitungsfreistellung in % (z.B. 50)"
+                        min="0"
+                        max="100"
+                        step="1"
+                        onFocus={(e) => e.target.select()}
+                      />
+                    )}
                   </div>
 
                   {/* New: Presence Days selection for special employee types */}
-                  {/* Now checks if type is NOT 'normal' and NOT 'zusatzkraft' */}
-                  {newEmployee.type !== 'normal' && newEmployee.type !== 'zusatzkraft' && (
+                  {newEmployee.type !== 'normal' && newEmployee.type !== 'zusatzkraft' && newEmployee.type !== 'leitung' && newEmployee.type !== 'stellv_leitung' && (
                     <div className="mb-4 p-3 bg-white rounded-lg border border-gray-300 shadow-sm">
                       <h4 className="text-md font-semibold text-gray-700 mb-2">Anwesenheitstage in der Einrichtung:</h4>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
@@ -174,8 +192,17 @@ const EmployeeManagement = ({
                               <li key={employee.id} className={`grid grid-cols-[minmax(150px,1fr)_1fr_auto] gap-2 items-center p-3 rounded-lg shadow-sm border border-gray-200 ${groupColorClass} ${groupTextColorClass}`}> {/* Applied grid layout */}
                                 <span className="font-medium">{employee.name} ({employee.contractedHoursPerWeek}h/Woche)</span>
                                 <div className="text-sm flex flex-col items-center"> {/* Changed items-end to items-center */}
-                                  <span>Gruppe: {employeeGroup?.name || 'Ohne Gruppe'}</span>
-                                  {employee.type !== 'normal' && employee.type !== 'zusatzkraft' && ( // Only show type for non-normal/non-zusatzkraft
+                                  {employee.type === 'leitung' && (
+                                    <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full mt-1 font-semibold">
+                                      Leitung
+                                    </span>
+                                  )}
+                                  {employee.type === 'stellv_leitung' && (
+                                    <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full mt-1 font-semibold">
+                                      stellv. Leitung
+                                    </span>
+                                  )}
+                                  {employee.type !== 'normal' && employee.type !== 'zusatzkraft' && employee.type !== 'leitung' && employee.type !== 'stellv_leitung' && ( // Only show type for non-normal/non-zusatzkraft
                                     <span className="text-xs bg-white text-gray-800 px-2 py-0.5 rounded-full mt-1">
                                       {employee.type === 'apprentice' ? 'Auszubildender' : employee.type === 'fsj' ? 'FSJler' : employee.type === 'intern' ? 'Praktikant' : ''}
                                       {employee.presenceDays && employee.presenceDays.length > 0 && ` (${employee.presenceDays.join(', ')})`}
@@ -189,6 +216,11 @@ const EmployeeManagement = ({
                                   {employee.overriddenDisposalHours !== null && employee.overriddenDisposalHours !== undefined && employee.overriddenDisposalHours !== '' && (
                                     <span className="text-xs bg-white text-gray-800 px-2 py-0.5 rounded-full mt-1">
                                       VZ: {employee.overriddenDisposalHours}h (Überschrieben)
+                                    </span>
+                                  )}
+                                  {Number(employee.leadershipReleasePercent) > 0 && (
+                                    <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full mt-1 font-medium">
+                                      Leitung: {employee.leadershipReleasePercent}% ({((Number(employee.contractedHoursPerWeek) * Number(employee.leadershipReleasePercent)) / 100).toFixed(1)}h)
                                     </span>
                                   )}
                                 </div>

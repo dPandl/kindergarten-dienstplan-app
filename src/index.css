@@ -32,6 +32,21 @@ button {
   font-weight: 500;
   border-radius: 8px;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+button:focus {
+  outline: none;
+}
+
+/* Verhindert das Aufblitzen von Standard-Browser-Outlines beim Klick im Darkmode */
+*:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+*:focus {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Standard-Styling für Eingabefelder im Light- und Darkmode */
@@ -146,6 +161,23 @@ html.dark button.bg-gray-200:hover {
 .frosted-glass-card {
   -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
   backdrop-filter: blur(24px) saturate(180%) !important;
+}
+
+/* Milchglas-Effekt speziell für Kontext- und Schichtmenüs */
+.frosted-glass-menu {
+  background: rgba(255, 255, 255, 0.78) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.4) inset !important;
+}
+
+html.dark .frosted-glass-menu {
+  background: rgba(15, 23, 42, 0.72) !important; /* leicht transparentes Schiefer/Dark-Slate */
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 25px 35px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
 }
 
 /* --- Allgemeine Grid-Definition für den Wochenplan (Standardansicht) --- */

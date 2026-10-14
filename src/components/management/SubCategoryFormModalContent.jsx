@@ -1,5 +1,6 @@
 import React from 'react';
 import ColorPickerDropdown from '../common/ColorPickerDropdown';
+import CustomSelect from '../common/CustomSelect';
 import { blockColors, PAUSE_CATEGORY } from '../../constants/scheduleConstants';
 
 const SubCategoryFormModalContent = ({
@@ -18,20 +19,16 @@ const SubCategoryFormModalContent = ({
         <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
           Übergeordneter Schichtblock *
         </label>
-        <select
-          name="parentCategoryId"
-          value={newSubCategory.parentCategoryId}
+        <CustomSelect
+          value={newSubCategory.parentCategoryId || ''}
+          placeholder="Übergeordneten Block auswählen..."
           onChange={(e) => setNewSubCategory((prev) => ({ ...prev, parentCategoryId: e.target.value }))}
-          className="w-full h-[42px] px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm transition text-gray-800 dark:text-gray-100 cursor-pointer"
-        >
-          <option value="">Übergeordneten Block auswählen...</option>
-          <option value={PAUSE_CATEGORY.id}>{PAUSE_CATEGORY.name}</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
+          options={[
+            { value: '', label: 'Übergeordneten Block auswählen...' },
+            { value: PAUSE_CATEGORY.id, label: PAUSE_CATEGORY.name },
+            ...categories.map((category) => ({ value: category.id, label: category.name })),
+          ]}
+        />
         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
           Der Unterblock ordnet sich diesem Hauptblock unter.
         </p>

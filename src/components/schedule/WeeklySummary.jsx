@@ -79,18 +79,42 @@ const WeeklySummary = ({
                                               {summary.employeeName}
                                           </td>
                                           <td className={`px-4 py-3 whitespace-nowrap text-sm text-center border-r border-gray-200 ${workHourCellClasses}`}>
-                                              {formatMinutesToDecimalHours(summary.weeklyTotalWorkMinutes)} / {summary.contractedHours}h
-                                          </td>
+                                              {formatMinutesToDecimalHours(summary.weeklyTotalWorkMinutes)} / {summary.effectiveContractedHours || `${summary.contractedHours}h`}</td>
                                           {disposalTimeCategory && (
                                               <td className={`px-4 py-3 whitespace-nowrap text-sm text-center border-r border-gray-200 ${disposalTimeCellClasses}`}>
                                                   {formatMinutesToDecimalHours(summary.weeklyTotalDisposalMinutes)} / {formatMinutesToDecimalHours(summary.targetDisposalMinutes)}
                                               </td>
                                           )}
-                                          {dynamicCategoryHeaders.map(cat => (
-                                              <td key={cat.id} className="px-4 py-3 whitespace-nowrap text-sm text-gray-800 text-center border-r border-gray-200">
-                                                  {formatMinutesToDecimalHours(summary.weeklyCategoryTotals[cat.id] || 0)}
-                                              </td>
-                                          ))}
+                                          {dynamicCategoryHeaders.map(cat => {
+                                              const isCare = cat.isCareCategory || cat.id === '_default_cat_betreuung';
+                                              const isLeadership = cat.isLeadershipReleaseCategory || cat.id === '_default_cat_leitungsfreistellung' || (cat.name && cat.name.toLowerCase().includes('leitungsfreistellung'));
+                                              const actualMinutes = summary.weeklyCategoryTotals[cat.id] || 0;
+
+                                              let cellClasses = 'bg-white text-gray-800';
+                                              let cellText = formatMinutesToDecimalHours(actualMinutes);
+
+                                              if (isCare) {
+                                                  // Betreuungs-Soll anzeigen (Gesamt abzüglich VZ und Leitungsfreistellung)
+                                                  const targetCare = summary.targetCareMinutes ?? Math.max(0, (summary.contractedHours * 60) - summary.targetDisposalMinutes - (summary.targetLeadershipMinutes || 0));
+                                                  cellText = `${formatMinutesToDecimalHours(actualMinutes)} / ${formatMinutesToDecimalHours(targetCare)}`;
+                                              } else if (isLeadership) {
+                                                  const targetLeadership = summary.targetLeadershipMinutes || 0;
+                                                  if (targetLeadership > 0) {
+                                                      cellText = `${formatMinutesToDecimalHours(actualMinutes)} / ${formatMinutesToDecimalHours(targetLeadership)}`;
+                                                  }
+                                                  // Warnung bei zu viel oder zu wenig Leitungsfreistellung
+                                                  const hasLeadershipWarning = summary.weeklyWarnings.some(w => w.includes('Leitung'));
+                                                  if (hasLeadershipWarning) {
+                                                      cellClasses = 'bg-red-500 text-white';
+                                                  }
+                                              }
+
+                                              return (
+                                                  <td key={cat.id} className={`px-4 py-3 whitespace-nowrap text-sm text-center border-r border-gray-200 ${cellClasses}`}>
+                                                      {cellText}
+                                                  </td>
+                                              );
+                                          })}
                                           <td className={`px-4 py-3 whitespace-nowrap text-sm text-red-600 print-hidden-warning ${hasPresenceDayWarnings ? 'bg-red-100' : ''}`}>
                                               {/* Display all warnings now */}
                                               {summary.weeklyWarnings.join(', ')}

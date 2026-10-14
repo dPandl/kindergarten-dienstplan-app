@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Settings, X, Moon, Sun, Palette, Info, RotateCcw, Sparkles, Waves, Gauge, SunMedium, Check } from 'lucide-react';
+import { Settings, X, Moon, Sun, Palette, Info, RotateCcw, Sparkles, Waves, Gauge, SunMedium, Check, Code2, Wand2, Building2, ChevronRight } from 'lucide-react';
 import {
   getBackgroundConfig,
   getBackgroundActiveColors,
@@ -418,6 +418,9 @@ const SettingsModal = ({
   setCustomColorsLight,
   customColorsDark = DEFAULT_CUSTOM_COLORS_DARK,
   setCustomColorsDark,
+  planAssistantEnabled = false,
+  setPlanAssistantEnabled,
+  onOpenFacilitySettings,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   // Welcher Farbmodus wird im Color-Chooser gerade konfiguriert (default: aktuelles Theme)
@@ -472,7 +475,7 @@ const SettingsModal = ({
       }}
     >
       <div
-        className={`bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-2xl shadow-2xl max-w-lg w-full relative border border-gray-200/80 dark:border-gray-700/80 overflow-hidden transform transition-all duration-250 ease-out flex flex-col max-h-[90vh] ${
+        className={`bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-2xl shadow-2xl max-w-4xl w-full relative border border-gray-200/80 dark:border-gray-700/80 overflow-hidden transform transition-all duration-250 ease-out flex flex-col max-h-[90vh] ${
           isVisible ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-2'
         }`}
       >
@@ -570,7 +573,7 @@ const SettingsModal = ({
               </div>
 
               {/* Grid mit visuellen Miniatur-Vorschauen */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 sm:max-h-72 overflow-y-auto p-1 pr-1.5 custom-scrollbar">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-64 sm:max-h-72 overflow-y-auto p-1 pr-1.5 custom-scrollbar">
                 {BACKGROUND_PREVIEWS.map((item) => {
                   const isActive = backgroundStyle === item.id;
                   return (
@@ -761,7 +764,7 @@ const SettingsModal = ({
                 <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
                   6 Farb-Presets ({editingMode === 'dark' ? 'Dunkel' : 'Hell'}):
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                   {currentPresets.map((preset) => {
                     const isSelected = String(activeBgPreset) === String(preset.id);
                     return (
@@ -875,8 +878,80 @@ const SettingsModal = ({
             </div>
           </div>
 
+          {/* Sektion: Experimentelle Features */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider mt-4">
+              <Wand2 size={14} />
+              <span>Experimentelle Features</span>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-3.5 border border-purple-200 dark:border-purple-900/60 shadow-xs flex items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-gradient-to-tr from-blue-600 to-purple-600 text-white shrink-0 mt-0.5">
+                  <Wand2 size={16} />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-1.5">
+                    <span>Plan-Assistent</span>
+                    <span className="text-[10px] bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 px-1 rounded-sm font-semibold">
+                      Beta
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Schaltet den Button für den automatischen Dienstplan-Assistenten in "Wochenpläne verwalten" frei.
+                  </div>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={planAssistantEnabled}
+                  onChange={(e) => setPlanAssistantEnabled?.(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+              </label>
+            </div>
+          </div>
+
+          {/* Sektion: Einrichtungseinstellungen */}
+          {onOpenFacilitySettings && (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider mt-4">
+                <Building2 size={14} />
+                <span>Einrichtung &amp; Betrieb</span>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-3.5 border border-purple-200 dark:border-purple-900/60 shadow-xs flex items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-purple-600 text-white shrink-0 mt-0.5 shadow-sm">
+                    <Building2 size={16} />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-1.5">
+                      <span>Einrichtungseinstellungen</span>
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Feste Teamsitzungen, Leitungsabdeckung und Generator-Regeln verwalten.
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onOpenFacilitySettings}
+                  className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shrink-0 cursor-pointer shadow-xs"
+                >
+                  <span>Öffnen</span>
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Sektion: Über die Anwendung */}
-          <div className="space-y-3">
+          <div className="space-y-3 border-t border-gray-200/70 dark:border-gray-700/70 pt-4">
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               <Info size={14} className="text-emerald-500" />
               <span>App-Information</span>
@@ -884,9 +959,12 @@ const SettingsModal = ({
 
             <div className="bg-gray-50 dark:bg-gray-900/40 rounded-xl p-3 border border-gray-200/80 dark:border-gray-700/80 flex items-center justify-between text-xs">
               <span className="text-gray-600 dark:text-gray-400">Installierte Version</span>
-              <span className="font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                className="font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700 select-none"
+              >
                 v{appVersion}
-              </span>
+              </button>
             </div>
           </div>
         </div>

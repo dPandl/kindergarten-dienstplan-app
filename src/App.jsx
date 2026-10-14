@@ -87,9 +87,13 @@ import ShiftMenus from './components/schedule/ShiftMenus';
 import WeeklySummary from './components/schedule/WeeklySummary';
 import ScheduleLegend from './components/schedule/ScheduleLegend';
 import SickLeaveModal from './components/modals/SickLeaveModal';
+import ScheduleGeneratorModal from './components/modals/ScheduleGeneratorModal';
+import FacilitySettingsModal, { DEFAULT_FACILITY_SETTINGS } from './components/modals/FacilitySettingsModal';
+import { generateFullSchedule, generateReplacementSchedule } from './utils/scheduleGenerator';
+import { generateFullSchedule as generateFullScheduleV2 } from './utils/scheduleGeneratorV2';
 import BaseModal from './components/common/BaseModal';
 import RibbonMenu from './components/common/RibbonMenu';
-import { Users, UserPlus, Layers, FolderPlus, Tag, BookmarkPlus, Clock, CheckCircle2, Info, X, Thermometer } from 'lucide-react';
+import { Users, UserPlus, Layers, FolderPlus, Tag, BookmarkPlus, Clock, CheckCircle2, Info, X, Thermometer, Wand2 } from 'lucide-react';
 
 const DEFAULT_SCHEDULE_ID = 'default';
 
@@ -160,7 +164,7 @@ function App() {
   // IMPORTANT: Update this version string whenever you release a new version
   // for which you want to show the "What's New" popup.
   // Use a semantic versioning scheme (major.minor.patch) for easy comparison.
-  const CURRENT_APP_VERSION = "Beta 2.0.0"; // Updated version string
+  const CURRENT_APP_VERSION = "Beta 2.0.3"; // Updated version string
 
   const [theme, setTheme] = useState(() => {
     try {
@@ -439,6 +443,27 @@ useEffect(() => {
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showFacilitySettingsModal, setShowFacilitySettingsModal] = useState(false);
+
+  // Einrichtungseinstellungen – werden in localStorage persisiert
+  const [facilitySettings, setFacilitySettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('facility_settings');
+      return saved ? { ...DEFAULT_FACILITY_SETTINGS, ...JSON.parse(saved) } : { ...DEFAULT_FACILITY_SETTINGS };
+    } catch {
+      return { ...DEFAULT_FACILITY_SETTINGS };
+    }
+  });
+
+  const handleSaveFacilitySettings = (newSettings) => {
+    setFacilitySettings(newSettings);
+    try {
+      localStorage.setItem('facility_settings', JSON.stringify(newSettings));
+    } catch (e) {
+      console.error('Fehler beim Speichern der Einrichtungseinstellungen:', e);
+    }
+  };
+
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackDraft, setFeedbackDraft] = useState(FEEDBACK_DEFAULT_DRAFT);
   const handleFeedbackClick = () => setShowFeedbackModal(true);
@@ -503,12 +528,13 @@ useEffect(() => {
 
   // Employee States
   const [employees, setEmployees] = useState([]);
-  // Added overriddenDisposalHours, type, and presenceDays to newEmployee state
+  // Added overriddenDisposalHours, type, presenceDays, and leadershipReleasePercent to newEmployee state
   const [newEmployee, setNewEmployee] = useState({
     name: '',
     contractedHoursPerWeek: 0,
     groupId: '',
     overriddenDisposalHours: '',
+    leadershipReleasePercent: '',
     type: 'normal', // 'normal', 'zusatzkraft', 'apprentice', 'fsj', 'intern'
     presenceDays: [...WEEK_DAYS_PLAN], // Default to all days for normal employees
   });
@@ -518,10 +544,11 @@ useEffect(() => {
 
 
   // Category States (new)
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES); // Default: Betreuung (orange), Verfügungszeit (grün)
-  const [newCategory, setNewCategory] = useState({ name: '', color: blockColors[0] || 'bg-blue-500', isDisposalTimeCategory: false, isCareCategory: false }); // Added isCareCategory
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES); // Default: Betreuung (orange), Verfügungszeit (grün), Leitungsfreistellung (indigo), Schule (sky)
+  const [newCategory, setNewCategory] = useState({ name: '', color: blockColors[0] || 'bg-blue-500', isDisposalTimeCategory: false, isCareCategory: false, isLeadershipReleaseCategory: false }); // Added isCareCategory, isLeadershipReleaseCategory
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [isCategoriesSectionMinimized, setIsCategoriesSectionMinimized] = useState(true); // Changed to true for default minimized
+
 
   // SubCategory States (new)
   const [subCategories, setSubCategories] = useState([]);
@@ -549,6 +576,7 @@ useEffect(() => {
     return { shifts: [], displayStartTime: '06:00', displayEndTime: '18:00', title: 'Wochenplan', sickDays: {}, createdAt: nowIso, updatedAt: nowIso };
   }); // Changed to 18:00
   const [showSickLeaveModal, setShowSickLeaveModal] = useState(false);
+  const [showScheduleGeneratorModal, setShowScheduleGeneratorModal] = useState(false);
 
   // Display Time Range States (new)
   const [displayStartHour, setDisplayStartHour] = useState(6);
@@ -647,13 +675,27 @@ useEffect(() => {
     }
   }, [hideAbsentEmployees]);
 
+  const [planAssistantEnabled, setPlanAssistantEnabled] = useState(() => {
+    try {
+      const saved = localStorage.getItem('planAssistantEnabled');
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('planAssistantEnabled', JSON.stringify(planAssistantEnabled));
+    } catch {
+      // ignore
+    }
+  }, [planAssistantEnabled]);
+
   // New state for storing rendered block widths and refs
   const [blockObservedWidths, setBlockObservedWidths] = useState({}); // Changed to observed widths
   const shiftBlockRefs = useRef({}); // To hold refs for each shift block element
   const resizeObservers = useRef({}); // To hold ResizeObserver instances
-
-  // State for dynamic cursor on shift blocks
-  const [currentShiftBlockCursor, setCurrentShiftBlockCursor] = useState('grab');
 
   // NEU: State für das Wochenplan-Verwaltungsmodal
   const [showScheduleManagementModal, setShowScheduleManagementModal] = useState(false);
@@ -807,6 +849,11 @@ useEffect(() => {
     return categories.find(cat => cat.isCareCategory);
   }, [categories]);
 
+  // Find the category marked for leadership release (Leitungsfreistellung)
+  const leadershipReleaseCategory = useMemo(() => {
+    return categories.find(cat => cat.isLeadershipReleaseCategory || cat.id === '_default_cat_leitungsfreistellung' || (cat.name && cat.name.toLowerCase().includes('leitungsfreistellung')));
+  }, [categories]);
+
 
   // Memoized list of all unique categories (including PAUSE) for table headers
   const allUniqueCategories = useMemo(() => {
@@ -826,10 +873,25 @@ useEffect(() => {
   }, [categories]);
 
   // Filtered categories for dynamic table headers (excluding disposal time and Pause, as they have dedicated columns)
+  // Betreuung wird als Hauptkategorie zuerst einsortiert, gefolgt von Leitungsfreistellung, dann sonstige
   const dynamicCategoryHeaders = useMemo(() => {
-    return allUniqueCategories.filter(cat =>
+    const filtered = allUniqueCategories.filter(cat =>
       cat.id !== PAUSE_CATEGORY.id && (!disposalTimeCategory || cat.id !== disposalTimeCategory.id)
     );
+
+    return filtered.sort((a, b) => {
+      const aCare = a.isCareCategory || a.id === '_default_cat_betreuung';
+      const bCare = b.isCareCategory || b.id === '_default_cat_betreuung';
+      if (aCare && !bCare) return -1;
+      if (!aCare && bCare) return 1;
+
+      const aLead = a.isLeadershipReleaseCategory || a.id === '_default_cat_leitungsfreistellung' || (a.name && a.name.toLowerCase().includes('leitungsfreistellung'));
+      const bLead = b.isLeadershipReleaseCategory || b.id === '_default_cat_leitungsfreistellung' || (b.name && b.name.toLowerCase().includes('leitungsfreistellung'));
+      if (aLead && !bLead) return -1;
+      if (!aLead && bLead) return 1;
+
+      return a.name.localeCompare(b.name);
+    });
   }, [allUniqueCategories, disposalTimeCategory]);
 
 
@@ -877,8 +939,8 @@ useEffect(() => {
       }
 
       // 3. Tertiary sort (within same group and same type):
-      if (a.type === 'normal' || a.type === 'zusatzkraft') { // Both normal and zusatzkraft sort by contracted hours
-        // For normal/zusatzkraft employees: contracted hours descending, then name alphabetically
+      if (a.type === 'normal' || a.type === 'zusatzkraft' || a.type === 'leitung' || a.type === 'stellv_leitung') { // Sort by contracted hours
+        // Contracted hours descending, then name alphabetically
         if (b.contractedHoursPerWeek !== a.contractedHoursPerWeek) {
           return b.contractedHoursPerWeek - a.contractedHoursPerWeek;
         }
@@ -1029,16 +1091,34 @@ useEffect(() => {
           });
 
           if (
-            (employee.type === 'normal' || employee.type === 'zusatzkraft') ||
+            (employee.type === 'normal' || employee.type === 'zusatzkraft' || employee.type === 'leitung' || employee.type === 'stellv_leitung') ||
             (employee.presenceDays || []).includes(day)
           ) {
             weeklyWorkMinutesOnPresenceDays += totalWorkMinutes;
           }
         });
 
+        const isSpecialType = employee.type !== 'normal' && employee.type !== 'zusatzkraft' && employee.type !== 'leitung' && employee.type !== 'stellv_leitung';
+        const numPresenceDays = (employee.presenceDays || []).length;
+        const hasPresenceDays = isSpecialType && numPresenceDays > 0 && numPresenceDays < WEEK_DAYS_PLAN.length;
+
         const contractedMinutesPerWeek = employee.contractedHoursPerWeek * 60;
-        const discrepancy = weeklyTotalWorkMinutes - contractedMinutesPerWeek;
-        const toleranceMinutes = 0.1; // Allow for very minor rounding differences (e.g., 0.01h = 0.6 min)
+
+        // Prüfen, ob an Schultagen (Nicht-Anwesenheitstagen) Schichten existieren:
+        const hasSchoolDayShifts = hasPresenceDays && masterSchedule.shifts.some(s => 
+          s.employeeId === employee.id && 
+          !(employee.presenceDays || []).includes(s.dayOfWeek) && 
+          s.segments && s.segments.length > 0
+        );
+
+        // Wenn Schultage im Dienstplan generiert sind, gilt das volle vertragliche Wochenstundensoll (z.B. 39h),
+        // da die Schultage zur Gesamtarbeitszeit zählen. Ohne generierte Schultage nur die Präsenztage.
+        const effectiveContractedMinutes = (hasPresenceDays && !hasSchoolDayShifts)
+          ? Math.round(((contractedMinutesPerWeek / WEEK_DAYS_PLAN.length) * numPresenceDays) / 15) * 15
+          : contractedMinutesPerWeek;
+
+        const discrepancy = weeklyTotalWorkMinutes - effectiveContractedMinutes;
+        const toleranceMinutes = 15; // 15 Minuten Toleranz für saubere Rundung auf 15-Minuten-Raster
 
         const weeklyWarnings = []; // Defined here to ensure it's always an array
         if (discrepancy > toleranceMinutes) {
@@ -1051,14 +1131,23 @@ useEffect(() => {
         let targetDisposalMinutes = 0;
         // Prioritize overriddenDisposalHours if set
         if (employee.overriddenDisposalHours !== null && employee.overriddenDisposalHours !== undefined && employee.overriddenDisposalHours !== '') {
-            targetDisposalMinutes = Number(employee.overriddenDisposalHours) * 60;
+            targetDisposalMinutes = Math.round(Number(employee.overriddenDisposalHours) * 60);
         } else {
             const targetDisposalRule = disposalTimeRules.find(rule => {
                 const ruleContractedHours = Number(rule.contractedHours);
                 const employeeContractedHours = Number(employee.contractedHoursPerWeek);
                 return ruleContractedHours === employeeContractedHours;
             });
-            targetDisposalMinutes = targetDisposalRule ? targetDisposalRule.disposalHours * 60 : 0;
+            if (targetDisposalRule && targetDisposalRule.disposalHours !== undefined) {
+                const val = Number(targetDisposalRule.disposalHours);
+                if (!isNaN(val)) {
+                    if (hasPresenceDays) {
+                        targetDisposalMinutes = Math.round(((val * 60 / WEEK_DAYS_PLAN.length) * numPresenceDays) / 15) * 15;
+                    } else {
+                        targetDisposalMinutes = Math.round(val * 60);
+                    }
+                }
+            }
         }
 
         const disposalDiscrepancy = weeklyTotalDisposalMinutes - targetDisposalMinutes;
@@ -1071,22 +1160,41 @@ useEffect(() => {
             }
         }
 
+        // --- Calculate Leadership Release Discrepancy ---
+        const leadershipPercent = Number(employee.leadershipReleasePercent) || 0;
+        const targetLeadershipMinutes = (leadershipPercent > 0)
+          ? Math.round((contractedMinutesPerWeek * (leadershipPercent / 100)) / 15) * 15
+          : 0;
+
+        // Betreuungs-Soll berechnen: Leitungsfreistellung wird immer auf Kosten der Betreuung gemacht, nie auf Kosten der Verfügung
+        const targetCareMinutes = Math.max(0, effectiveContractedMinutes - targetDisposalMinutes - targetLeadershipMinutes);
+
+        const leadershipCatObj = categories.find(c => c.isLeadershipReleaseCategory || c.id === '_default_cat_leitungsfreistellung' || (c.name && c.name.toLowerCase().includes('leitungsfreistellung')));
+        const weeklyTotalLeadershipMinutes = leadershipCatObj ? (weeklyCategoryTotals[leadershipCatObj.id] || 0) : 0;
+
+        if (targetLeadershipMinutes > 0) {
+          const leadershipDiscrepancy = weeklyTotalLeadershipMinutes - targetLeadershipMinutes;
+          if (leadershipDiscrepancy > toleranceMinutes) {
+            weeklyWarnings.push(`Leitung Überschuss: ${formatMinutesToDecimalHours(leadershipDiscrepancy)}`);
+          } else if (leadershipDiscrepancy < -toleranceMinutes) {
+            weeklyWarnings.push(`Leitung Defizit: ${formatMinutesToDecimalHours(Math.abs(leadershipDiscrepancy))}`);
+          }
+        } else if (weeklyTotalLeadershipMinutes > toleranceMinutes) {
+          weeklyWarnings.push(`Leitung Überschuss: ${formatMinutesToDecimalHours(weeklyTotalLeadershipMinutes)}`);
+        }
+
         // --- New: Warning for overwork on presence days for special employee types ---
         // This warning applies only to 'apprentice', 'fsj', 'intern'
-        if (employee.type !== 'normal' && employee.type !== 'zusatzkraft' && (employee.presenceDays || []).length > 0) {
-            // Calculate expected daily hours on presence days
-            const numPresenceDays = (employee.presenceDays || []).length;
-            if (numPresenceDays > 0) {
-                const expectedDailyMinutesOnPresenceDays = contractedMinutesPerWeek / WEEK_DAYS_PLAN.length; // Total contracted hours divided by 5 days
-                const expectedWorkOnPresenceDays = expectedDailyMinutesOnPresenceDays * numPresenceDays; // Sum of expected daily hours for presence days
+        if (hasPresenceDays) {
+            const expectedDailyMinutesOnPresenceDays = contractedMinutesPerWeek / WEEK_DAYS_PLAN.length; // Total contracted hours divided by 5 days
+            const expectedWorkOnPresenceDays = Math.round((expectedDailyMinutesOnPresenceDays * numPresenceDays) / 15) * 15; // Sum of expected daily hours for presence days auf 15m-Raster
 
-                const presenceDayDiscrepancy = weeklyWorkMinutesOnPresenceDays - expectedWorkOnPresenceDays;
+            const presenceDayDiscrepancy = weeklyWorkMinutesOnPresenceDays - expectedWorkOnPresenceDays;
 
-                if (presenceDayDiscrepancy > toleranceMinutes) {
-                    weeklyWarnings.push(`Anwesenheitstage: +${formatMinutesToDecimalHours(presenceDayDiscrepancy)}`);
-                } else if (presenceDayDiscrepancy < -toleranceMinutes) {
-                    weeklyWarnings.push(`Anwesenheitstage: -${formatMinutesToDecimalHours(Math.abs(presenceDayDiscrepancy))}`);
-                }
+            if (presenceDayDiscrepancy > toleranceMinutes) {
+                weeklyWarnings.push(`Anwesenheitstage: +${formatMinutesToDecimalHours(presenceDayDiscrepancy)}`);
+            } else if (presenceDayDiscrepancy < -toleranceMinutes) {
+                weeklyWarnings.push(`Anwesenheitstage: -${formatMinutesToDecimalHours(Math.abs(presenceDayDiscrepancy))}`);
             }
         }
 
@@ -1094,10 +1202,16 @@ useEffect(() => {
         summaries[employee.id] = {
             employeeName: employee.name,
             contractedHours: employee.contractedHoursPerWeek,
+            effectiveContractedHours: (hasPresenceDays && !hasSchoolDayShifts) ? formatMinutesToDecimalHours(effectiveContractedMinutes) : undefined,
+            hasPresenceDays,
+            numPresenceDays,
             weeklyTotalWorkMinutes,
             weeklyTotalBreakMinutes,
             weeklyTotalDisposalMinutes, // New: actual weekly disposal minutes
             targetDisposalMinutes, // New: target weekly disposal minutes
+            weeklyTotalLeadershipMinutes, // Neu: tatsächliche Leitungsfreistellungs-Minuten
+            targetLeadershipMinutes, // Neu: Soll-Leitungsfreistellungs-Minuten
+            targetCareMinutes, // Neu: Soll-Betreuungs-Minuten (nach Abzug von VZ und Leitungsfreistellung)
             weeklyCategoryTotals, // New: contains totals for each specific category for the week
             weeklyWarnings
         };
@@ -1214,17 +1328,38 @@ useEffect(() => {
                 setEmployees(importedData.employees.map(emp => ({
                   ...emp,
                   overriddenDisposalHours: emp.overriddenDisposalHours ?? '',
+                  leadershipReleasePercent: emp.leadershipReleasePercent ?? 0,
                   type: emp.type ?? 'normal',
                   presenceDays: emp.presenceDays ?? [...WEEK_DAYS_PLAN],
                 })));
-                setCategories(importedData.categories.map(cat => ({
+                const loadedCats = importedData.categories.map(cat => ({
                   ...cat,
                   isDisposalTimeCategory: cat.isDisposalTimeCategory ?? false,
-                  isCareCategory: cat.isCareCategory ?? false
-                })));
+                  isCareCategory: cat.isCareCategory ?? false,
+                  isLeadershipReleaseCategory: cat.isLeadershipReleaseCategory ?? (cat.id === '_default_cat_leitungsfreistellung' || (cat.name && cat.name.toLowerCase().includes('leitungsfreistellung')) ? true : false),
+                }));
+                if (!loadedCats.some(c => c.isLeadershipReleaseCategory || c.id === '_default_cat_leitungsfreistellung')) {
+                  const defaultLeadCat = DEFAULT_CATEGORIES.find(c => c.id === '_default_cat_leitungsfreistellung');
+                  if (defaultLeadCat) loadedCats.push(defaultLeadCat);
+                }
+
+                setCategories(loadedCats);
                 setSubCategories(importedData.subCategories);
                 setDisposalTimeRules(importedData.disposalTimeRules || []);
                 setOrderedGroupIds(importedData.orderedGroupIds || importedData.groups.map(g => g.id));
+
+                if (importedData.facilitySettings) {
+                  const mergedFacilitySettings = {
+                    ...DEFAULT_FACILITY_SETTINGS,
+                    ...importedData.facilitySettings,
+                  };
+                  setFacilitySettings(mergedFacilitySettings);
+                  try {
+                    localStorage.setItem('facility_settings', JSON.stringify(mergedFacilitySettings));
+                  } catch (e) {
+                    console.error('Fehler beim Speichern der geladenen Einrichtungseinstellungen:', e);
+                  }
+                }
 
                 const { loadedSchedules, loadedActiveId, activePlan } = extractSchedulesFromImportedData(importedData);
                 setSchedules(loadedSchedules);
@@ -1495,7 +1630,11 @@ useEffect(() => {
     const contractedHoursNum = Number(newEmployee.contractedHoursPerWeek);
     // Handle overriddenDisposalHours: convert to number or null if empty
     const overriddenDisposalHoursNum = newEmployee.overriddenDisposalHours === '' ? null : Number(newEmployee.overriddenDisposalHours);
-
+    // Handle leadershipReleasePercent: nur aktiv, wenn Typ Leitung oder stellv. Leitung
+    const isLeadership = newEmployee.type === 'leitung' || newEmployee.type === 'stellv_leitung';
+    const leadershipPercentNum = isLeadership
+      ? (newEmployee.leadershipReleasePercent === '' || newEmployee.leadershipReleasePercent === null || newEmployee.leadershipReleasePercent === undefined ? 0 : Number(newEmployee.leadershipReleasePercent))
+      : 0;
 
     if (!newEmployee.name.trim() || contractedHoursNum <= 0) {
       setMessage('Mitarbeitername und Stunden pro Woche sind erforderlich.');
@@ -1507,8 +1646,14 @@ useEffect(() => {
       setMessageType('error');
       return;
     }
-    // Validate presence days for special types (excluding 'normal' and 'zusatzkraft')
-    if (newEmployee.type !== 'normal' && newEmployee.type !== 'zusatzkraft' && (newEmployee.presenceDays || []).length === 0) {
+    if (isNaN(leadershipPercentNum) || leadershipPercentNum < 0 || leadershipPercentNum > 100) {
+      setMessage('Leitungsfreistellung muss zwischen 0 und 100 % liegen.');
+      setMessageType('error');
+      return;
+    }
+    // Validate presence days for special types (excluding 'normal', 'zusatzkraft', 'leitung', 'stellv_leitung')
+    const isRegularStaff = newEmployee.type === 'normal' || newEmployee.type === 'zusatzkraft' || newEmployee.type === 'leitung' || newEmployee.type === 'stellv_leitung';
+    if (!isRegularStaff && (newEmployee.presenceDays || []).length === 0) {
       setMessage('Für Auszubildende, FSJler und Praktikanten müssen Anwesenheitstage ausgewählt werden.');
       setMessageType('error');
       return;
@@ -1521,8 +1666,9 @@ useEffect(() => {
           ...newEmployee,
           contractedHoursPerWeek: contractedHoursNum,
           overriddenDisposalHours: overriddenDisposalHoursNum,
-          // Ensure presenceDays is an array, default to all days if type is normal or zusatzkraft
-          presenceDays: (newEmployee.type === 'normal' || newEmployee.type === 'zusatzkraft') ? [...WEEK_DAYS_PLAN] : (newEmployee.presenceDays || [])
+          leadershipReleasePercent: leadershipPercentNum,
+          // Ensure presenceDays is an array, default to all days if regular staff
+          presenceDays: isRegularStaff ? [...WEEK_DAYS_PLAN] : (newEmployee.presenceDays || [])
         } : emp
       ));
       setMessage('Mitarbeiter erfolgreich aktualisiert!');
@@ -1534,25 +1680,33 @@ useEffect(() => {
         id: uuidv4(),
         contractedHoursPerWeek: contractedHoursNum,
         overriddenDisposalHours: overriddenDisposalHoursNum,
-        // Ensure presenceDays is an array, default to all days if type is normal or zusatzkraft
-        presenceDays: (newEmployee.type === 'normal' || newEmployee.type === 'zusatzkraft') ? [...WEEK_DAYS_PLAN] : (newEmployee.presenceDays || [])
+        leadershipReleasePercent: leadershipPercentNum,
+        // Ensure presenceDays is an array, default to all days if regular staff
+        presenceDays: isRegularStaff ? [...WEEK_DAYS_PLAN] : (newEmployee.presenceDays || [])
       };
       setEmployees(prev => [...prev, employeeToAdd]);
       setMessage('Mitarbeiter erfolgreich hinzugefügt!');
       setMessageType('success');
     }
-    setNewEmployee({ name: '', contractedHoursPerWeek: 0, groupId: '', overriddenDisposalHours: '', type: 'normal', presenceDays: [...WEEK_DAYS_PLAN] });
+    setNewEmployee({ name: '', contractedHoursPerWeek: 0, groupId: '', overriddenDisposalHours: '', leadershipReleasePercent: '', type: 'normal', presenceDays: [...WEEK_DAYS_PLAN] });
     setEditingEmployeeId(null);
     setIsEditingFromOverview(false);
     setShowAddEmployeeModal(false); // Formular schließen, Übersicht ist direkt darunter sichtbar
   };
 
   const handleEditEmployee = (employee) => {
+    let resolvedType = employee.type ?? 'normal';
+    // Falls ein bestehender Mitarbeiter bereits eine Leitungsfreistellung hinterlegt hatte, Typ auf 'leitung' setzen
+    if (resolvedType === 'normal' && Number(employee.leadershipReleasePercent) > 0) {
+      resolvedType = 'leitung';
+    }
+
     // When editing, set the state with the actual number (will display as number)
     setNewEmployee({
       ...employee,
       overriddenDisposalHours: employee.overriddenDisposalHours ?? '', // Ensure empty string for input
-      type: employee.type ?? 'normal', // Ensure default type
+      leadershipReleasePercent: employee.leadershipReleasePercent ?? '',
+      type: resolvedType, // Ensure default or inferred type
       presenceDays: employee.presenceDays ?? [...WEEK_DAYS_PLAN], // Ensure default presence days
     });
     setEditingEmployeeId(employee.id);
@@ -1649,10 +1803,16 @@ useEffect(() => {
         setMessageType('error');
         return;
     }
+    // Prevent adding a new leadership release category if one already exists
+    if (newCategory.isLeadershipReleaseCategory && leadershipReleaseCategory) {
+        setMessage('Es kann nur ein Schichtblock für Leitungsfreistellung markiert werden.');
+        setMessageType('error');
+        return;
+    }
 
     const categoryToAdd = { ...newCategory, id: uuidv4() };
     setCategories(prev => [...prev, categoryToAdd]);
-    setNewCategory({ name: '', color: blockColors[0] || 'bg-blue-500', isDisposalTimeCategory: false, isCareCategory: false });
+    setNewCategory({ name: '', color: blockColors[0] || 'bg-blue-500', isDisposalTimeCategory: false, isCareCategory: false, isLeadershipReleaseCategory: false });
     setMessage('Schichtblock erfolgreich hinzugefügt!');
     setMessageType('success');
     setShowAddCategoryModal(false);
@@ -1664,7 +1824,8 @@ useEffect(() => {
     setNewCategory({
       ...category,
       isDisposalTimeCategory: category.isDisposalTimeCategory ?? false,
-      isCareCategory: category.isCareCategory ?? false
+      isCareCategory: category.isCareCategory ?? false,
+      isLeadershipReleaseCategory: category.isLeadershipReleaseCategory ?? false,
     });
     setIsEditingCategoryFromOverview(true);
     setShowAddCategoryModal(true);
@@ -1691,6 +1852,11 @@ useEffect(() => {
         setMessageType('error');
         return;
     }
+    if (newCategory.isLeadershipReleaseCategory && leadershipReleaseCategory && leadershipReleaseCategory.id !== editingCategoryId) {
+        setMessage('Es kann nur ein Schichtblock für Leitungsfreistellung markiert werden.');
+        setMessageType('error');
+        return;
+    }
 
     setCategories(prev => prev.map(category =>
       category.id === editingCategoryId ? { ...newCategory } : category
@@ -1698,7 +1864,7 @@ useEffect(() => {
     setMessage('Schichtblock erfolgreich aktualisiert!');
     setMessageType('success');
     setEditingCategoryId(null);
-    setNewCategory({ name: '', color: blockColors[0] || 'bg-blue-500', isDisposalTimeCategory: false, isCareCategory: false });
+    setNewCategory({ name: '', color: blockColors[0] || 'bg-blue-500', isDisposalTimeCategory: false, isCareCategory: false, isLeadershipReleaseCategory: false });
     setShowAddCategoryModal(false);
     setIsEditingCategoryFromOverview(false);
   };
@@ -1953,10 +2119,11 @@ useEffect(() => {
     if (!timelineDiv) return;
 
     const mainContainerRect = mainContainerRef.current.getBoundingClientRect();
+    const scrollTop = mainContainerRef.current.scrollTop;
 
-    // Calculate click position relative to the main container's right edge
-    const clickXRelativeToContainerRight = mainContainerRect.right - e.pageX;
-    const clickYRelativeToContainer = e.pageY - mainContainerRect.top;
+    // Calculate click position relative to the main container's right edge and top content edge
+    const clickXRelativeToContainerRight = mainContainerRect.right - e.clientX;
+    const clickYRelativeToContainer = (e.clientY - mainContainerRect.top) + scrollTop;
 
     const timelineRect = timelineDiv.getBoundingClientRect();
     const relativeXInTimeline = e.clientX - timelineRect.left; // This is for calculating minutes, keep as is
@@ -2260,8 +2427,14 @@ useEffect(() => {
     if (!mainContainerRef.current) return;
 
     const mainContainerRect = mainContainerRef.current.getBoundingClientRect();
-    const menuXRelativeToContainerRight = mainContainerRect.right - e.pageX;
-    const menuYRelativeToContainer = e.pageY - mainContainerRect.top;
+    const scrollTop = mainContainerRef.current.scrollTop;
+    const scrollLeft = mainContainerRef.current.scrollLeft;
+
+    // menuX: Abstand von der rechten Innenkante des scrollbaren Containers
+    // e.clientX ist die Viewport-X-Position der Maus
+    const menuXRelativeToContainerRight = mainContainerRect.right - e.clientX;
+    // menuY: Abstand von der oberen Kante des Inhalts (inklusive bisher gescrollter Pixel!)
+    const menuYRelativeToContainer = (e.clientY - mainContainerRect.top) + scrollTop;
 
     setShiftOptionsContext({ shift, segmentIndex });
     setShiftOptionsMenuPos({ x: menuXRelativeToContainerRight, y: menuYRelativeToContainer });
@@ -2345,27 +2518,29 @@ useEffect(() => {
         }
       }
     };
-  }, [masterSchedule.shifts, displayStartHour, displayStartMinute, displayEndHour, displayEndMinute, filteredEmployeesForDisplay]); // Added filteredEmployeesForDisplay to dependencies
+  }, [masterSchedule.shifts, displayStartHour, displayStartMinute, displayEndHour, displayEndMinute, filteredEmployeesForDisplay, hideAbsentEmployees]); // Added filteredEmployeesForDisplay and hideAbsentEmployees to dependencies
 
 
-  // --- Dynamic Cursor for Shift Blocks ---
+  // --- Dynamic Cursor for Shift Blocks (DOM-direkt ohne App-Re-Render) ---
   const handleShiftBlockMouseMove = useCallback((e) => {
     const shiftBlockElement = e.currentTarget;
     const rect = shiftBlockElement.getBoundingClientRect();
     const mouseX = e.clientX;
     const resizeHandleWidth = 15; // Must match the one in handleMouseDown
 
-    if (mouseX < rect.left + resizeHandleWidth) {
-      setCurrentShiftBlockCursor('ew-resize'); // Left resize
-    } else if (mouseX > rect.right - resizeHandleWidth) {
-      setCurrentShiftBlockCursor('ew-resize'); // Right resize
+    if (mouseX < rect.left + resizeHandleWidth || mouseX > rect.right - resizeHandleWidth) {
+      if (shiftBlockElement.style.cursor !== 'ew-resize') {
+        shiftBlockElement.style.cursor = 'ew-resize';
+      }
     } else {
-      setCurrentShiftBlockCursor('grab'); // Move
+      if (shiftBlockElement.style.cursor !== 'grab') {
+        shiftBlockElement.style.cursor = 'grab';
+      }
     }
   }, []);
 
-  const handleShiftBlockMouseLeave = useCallback(() => {
-    setCurrentShiftBlockCursor('grab'); // Reset to grab when mouse leaves
+  const handleShiftBlockMouseLeave = useCallback((e) => {
+    e.currentTarget.style.cursor = 'grab'; // Reset to grab when mouse leaves
   }, []);
 
 
@@ -2758,6 +2933,81 @@ useEffect(() => {
     });
   }, []);
 
+  // --- Handlers für automatische Dienstplan- und Ersatzplan-Generierung ---
+  const handleRunFullGeneration = useCallback(({ title, options }) => {
+    const nowIso = new Date().toISOString();
+    
+    const genFunc = options.useV2 ? generateFullScheduleV2 : generateFullSchedule;
+    
+    const result = genFunc({
+      groups,
+      employees,
+      categories,
+      subCategories,
+      disposalTimeRules,
+      facilitySettings,
+      sickDays: masterSchedule?.sickDays || {},
+      options,
+    });
+
+    const newPlanId = `plan-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const newPlan = {
+      id: newPlanId,
+      title: title || 'Neuer Dienstplan (Generiert)',
+      displayStartTime: `${String(displayStartHour).padStart(2, '0')}:${String(displayStartMinute).padStart(2, '0')}`,
+      displayEndTime: `${String(displayEndHour).padStart(2, '0')}:${String(displayEndMinute).padStart(2, '0')}`,
+      shifts: result.shifts,
+      sickDays: JSON.parse(JSON.stringify(masterSchedule?.sickDays || {})),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+
+    setSchedules(prev => [...prev, newPlan]);
+    setActiveScheduleId(newPlanId);
+    setMasterSchedule(newPlan);
+    setWeeklyPlanTitle(newPlan.title);
+
+    setMessage(`Neuer Dienstplan "${newPlan.title}" wurde erfolgreich generiert!`);
+    setMessageType('success');
+
+    return result;
+  }, [groups, employees, categories, subCategories, disposalTimeRules, facilitySettings, masterSchedule, displayStartHour, displayStartMinute, displayEndHour, displayEndMinute]);
+
+  const handleRunReplacementGeneration = useCallback(({ title, options }) => {
+    const nowIso = new Date().toISOString();
+    const result = generateReplacementSchedule({
+      currentShifts: masterSchedule?.shifts || [],
+      groups,
+      employees,
+      categories,
+      subCategories,
+      sickDays: masterSchedule?.sickDays || {},
+      options,
+    });
+
+    const newPlanId = `plan-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const newPlan = {
+      id: newPlanId,
+      title: title || `${weeklyPlanTitle} (Ersatzplan)`,
+      displayStartTime: `${String(displayStartHour).padStart(2, '0')}:${String(displayStartMinute).padStart(2, '0')}`,
+      displayEndTime: `${String(displayEndHour).padStart(2, '0')}:${String(displayEndMinute).padStart(2, '0')}`,
+      shifts: result.shifts,
+      sickDays: JSON.parse(JSON.stringify(masterSchedule?.sickDays || {})),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+
+    setSchedules(prev => [...prev, newPlan]);
+    setActiveScheduleId(newPlanId);
+    setMasterSchedule(newPlan);
+    setWeeklyPlanTitle(newPlan.title);
+
+    setMessage(`Ersatzplan "${newPlan.title}" mit ${result.changeLog?.length || 0} minimalen Anpassungen erstellt!`);
+    setMessageType('success');
+
+    return result;
+  }, [masterSchedule, groups, employees, categories, subCategories, weeklyPlanTitle, displayStartHour, displayStartMinute, displayEndHour, displayEndMinute]);
+
 // Funktion zum Speichern von Daten in einer Datei
   // NEU: 'showSuccessMessage' Parameter hinzugefügt, Standard ist true
   const handleSaveFile = useCallback(async (currentHandle = fileHandle, showSuccessMessage = true) => {
@@ -2818,6 +3068,7 @@ useEffect(() => {
         activeScheduleId: activeScheduleId,
         schedules: updatedSchedules,
         masterSchedule: currentActive, // Abwärtskompatibilität!
+        facilitySettings: facilitySettings, // Einrichtungseinstellungen mitspeichern!
       };
       const jsonString = JSON.stringify(dataToSave, null, 2);
 
@@ -2839,7 +3090,7 @@ useEffect(() => {
       setMessage(`Fehler beim Speichern der Datei: ${error.message}`);
       setMessageType('error');
     }
-  }, [groups, employees, categories, subCategories, disposalTimeRules, masterSchedule, orderedGroupIds, fileHandle, schedules, activeScheduleId, weeklyPlanTitle, displayStartHour, displayStartMinute, displayEndHour, displayEndMinute, setMessage]); // setMessage als Abhängigkeit hinzugefügt
+  }, [groups, employees, categories, subCategories, disposalTimeRules, masterSchedule, orderedGroupIds, fileHandle, schedules, activeScheduleId, weeklyPlanTitle, displayStartHour, displayStartMinute, displayEndHour, displayEndMinute, setMessage, facilitySettings]); // setMessage als Abhängigkeit hinzugefügt
 
 
   // Funktion zum Speichern von Daten unter einem neuen Dateinamen (Export)
@@ -2961,17 +3212,38 @@ useEffect(() => {
         setEmployees(importedData.employees.map(emp => ({
           ...emp,
           overriddenDisposalHours: emp.overriddenDisposalHours ?? '',
+          leadershipReleasePercent: emp.leadershipReleasePercent ?? 0,
           type: emp.type ?? 'normal',
           presenceDays: emp.presenceDays ?? [...WEEK_DAYS_PLAN],
         })));
-        setCategories(importedData.categories.map(cat => ({
+        const loadedImportedCats = importedData.categories.map(cat => ({
           ...cat,
           isDisposalTimeCategory: cat.isDisposalTimeCategory ?? false,
-          isCareCategory: cat.isCareCategory ?? false
-        })));
+          isCareCategory: cat.isCareCategory ?? false,
+          isLeadershipReleaseCategory: cat.isLeadershipReleaseCategory ?? (cat.id === '_default_cat_leitungsfreistellung' || (cat.name && cat.name.toLowerCase().includes('leitungsfreistellung')) ? true : false),
+        }));
+        if (!loadedImportedCats.some(c => c.isLeadershipReleaseCategory || c.id === '_default_cat_leitungsfreistellung')) {
+          const defaultLeadCat = DEFAULT_CATEGORIES.find(c => c.id === '_default_cat_leitungsfreistellung');
+          if (defaultLeadCat) loadedImportedCats.push(defaultLeadCat);
+        }
+
+        setCategories(loadedImportedCats);
         setSubCategories(importedData.subCategories);
         setDisposalTimeRules(importedData.disposalTimeRules || []);
         setOrderedGroupIds(importedData.orderedGroupIds || importedData.groups.map(g => g.id));
+
+        if (importedData.facilitySettings) {
+          const mergedFacilitySettings = {
+            ...DEFAULT_FACILITY_SETTINGS,
+            ...importedData.facilitySettings,
+          };
+          setFacilitySettings(mergedFacilitySettings);
+          try {
+            localStorage.setItem('facility_settings', JSON.stringify(mergedFacilitySettings));
+          } catch (e) {
+            console.error('Fehler beim Speichern der geladenen Einrichtungseinstellungen:', e);
+          }
+        }
 
         const { loadedSchedules, loadedActiveId, activePlan } = extractSchedulesFromImportedData(importedData);
         setSchedules(loadedSchedules);
@@ -3697,6 +3969,7 @@ useEffect(() => {
             onOpenDisposalRulesOverview={() => setShowDisposalRuleOverviewModal(true)}
             onOpenHelp={openHelpModal}
             onOpenFeedback={handleFeedbackClick}
+            onOpenFacilitySettings={() => setShowFacilitySettingsModal(true)}
             onOpenSettings={() => setShowSettingsModal(true)}
             theme={theme}
             toggleTheme={toggleTheme}
@@ -3887,6 +4160,7 @@ useEffect(() => {
               handleCancelEditCategory={handleCancelEditCategory}
               disposalTimeCategory={disposalTimeCategory}
               careCategory={careCategory}
+              leadershipReleaseCategory={leadershipReleaseCategory}
             />
           </BaseModal>
 
@@ -3976,6 +4250,7 @@ useEffect(() => {
                     <div key={day} className="mb-4 last:mb-0 printable-day-container">
                       {/* Main grid for the day's schedule */}
                       <div
+                        key={`grid-${hideAbsentEmployees}-${filteredEmployeesForDisplay.length}`}
                         className="grid text-sm weekly-plan-grid"
                         style={{
                           gridTemplateColumns: `2rem ${employeeColWidthScreen} 1fr 150px`,
@@ -3983,21 +4258,24 @@ useEffect(() => {
                           '--employee-col-width-print': employeeColWidthPrint,
                         }}
                       >
-                        {/* Weekday Name - now in the grid, spanning first two columns */}
-                        <h4 className="col-span-2 font-bold text-xl text-gray-800 dark:text-gray-100 mb-4 text-left pl-2 flex items-center gap-3 overflow-hidden whitespace-nowrap min-w-0">
-                          <span>{day}</span>
+                        {/* Weekday Name Header Row - Spans full width across columns */}
+                        <div className="col-span-full mb-4 text-left pl-2 flex items-center gap-3">
+                          <h4 className="font-bold text-xl text-gray-800 dark:text-gray-100 whitespace-nowrap">
+                            {day}
+                          </h4>
                           {sickCountForDay > 0 && (
                             <span
-                              className="sick-day-badge inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 shadow-xs print:hidden"
+                              className="sick-day-badge inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 shadow-xs print:hidden flex-shrink-0"
                               title={`${sickCountForDay} ${sickCountForDay === 1 ? 'Mitarbeiter' : 'Mitarbeiter'} an diesem Tag krankgemeldet`}
                             >
                               <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                               <span>{sickCountForDay} krank</span>
                             </span>
                           )}
-                        </h4>
-                      {/* Empty div to align time axis header correctly */}
-                      <div className="col-span-2"></div>
+                        </div>
+
+                        {/* Empty div for first two columns (vertical group + employee name) to align time axis header */}
+                        <div className="col-span-2"></div>
                       {/* Time Axis Header - now spans only the timeline column */}
                       <div className="col-start-3 col-end-4 relative pb-2 mb-2 px-2 time-label-header">
                         {/* Dynamic time lines */}
@@ -4095,29 +4373,44 @@ useEffect(() => {
                                       const isSick = (masterSchedule.sickDays?.[employee.id] || []).includes(day);
                                       const isDimmed = isSick || isSchoolDay;
 
-                                      // Mitarbeiterwünsche für diesen Wochentag auswerten
+                                      // Mitarbeiterwünsche & feste Vorgaben für diesen Wochentag auswerten
                                       const dayWish = employee.wishes?.[day];
+                                      const isFixedRequirement = dayWish?.requirementType === 'fixed';
                                       const hasDayWish = Boolean(
                                         dayWish &&
                                           (dayWish.dayOff ||
                                             dayWish.startTime ||
                                             dayWish.endTime ||
+                                            (dayWish.shiftType && dayWish.shiftType !== 'all') ||
                                             (dayWish.disposalPreference && dayWish.disposalPreference !== 'none') ||
                                             dayWish.note)
                                       );
 
                                       const wishTooltipLines = [];
                                       if (hasDayWish) {
-                                        if (dayWish.dayOff) wishTooltipLines.push('🏖️ Wunschfrei (Bevorzugt kein Dienst)');
-                                        if (dayWish.startTime || dayWish.endTime) {
-                                          wishTooltipLines.push(`⏰ Wunsch-Arbeitszeit: ${dayWish.startTime || 'Start offen'} bis ${dayWish.endTime || 'Ende offen'}`);
+                                        if (isFixedRequirement) {
+                                          wishTooltipLines.push('🔒 Verbindlichkeit: Feste Vorgabe (Muss)');
+                                        } else {
+                                          wishTooltipLines.push('⭐ Verbindlichkeit: Unverbindlicher Wunsch (Kann)');
                                         }
-                                        if (dayWish.disposalPreference === 'morning') wishTooltipLines.push('☀️ Verfügungszeit (VZ): Vormittags gewünscht');
-                                        if (dayWish.disposalPreference === 'afternoon') wishTooltipLines.push('🌙 Verfügungszeit (VZ): Nachmittags gewünscht');
-                                        if (dayWish.note) wishTooltipLines.push(`💬 Notiz: ${dayWish.note}`);
+                                        if (dayWish.dayOff) {
+                                          wishTooltipLines.push(isFixedRequirement ? '🔒 Fester freier Tag (Kein Dienst)' : '🏖️ Wunschfrei (Bevorzugt kein Dienst)');
+                                        }
+                                        if (dayWish.startTime || dayWish.endTime) {
+                                          const prefix = isFixedRequirement ? '⏰ Feste Arbeitszeit / Zeitfenster:' : '⏰ Wunsch-Arbeitszeit:';
+                                          wishTooltipLines.push(prefix + ' ' + (dayWish.startTime || 'Start offen') + ' bis ' + (dayWish.endTime || 'Ende offen'));
+                                        }
+                                        if (dayWish.shiftType === 'early') {
+                                          wishTooltipLines.push(isFixedRequirement ? '☀️ Schicht: Nur Vormittag / Früh' : '☀️ Schicht: Bevorzugt Früh');
+                                        } else if (dayWish.shiftType === 'late') {
+                                          wishTooltipLines.push(isFixedRequirement ? '🌙 Schicht: Nur Nachmittag / Spät' : '🌙 Schicht: Bevorzugt Spät');
+                                        }
+                                        if (dayWish.disposalPreference === 'morning') wishTooltipLines.push('☀️ Verfügungszeit (VZ): Vormittags');
+                                        if (dayWish.disposalPreference === 'afternoon') wishTooltipLines.push('🌙 Verfügungszeit (VZ): Nachmittags');
+                                        if (dayWish.note) wishTooltipLines.push('💬 Notiz: ' + dayWish.note);
                                       }
                                       const wishTooltipText = hasDayWish
-                                        ? `Mitarbeiterwunsch für ${employee.name} (${day}):\n${wishTooltipLines.join('\n')}`
+                                        ? (isFixedRequirement ? 'Feste Vorgabe' : 'Mitarbeiterwunsch') + ' für ' + employee.name + ' (' + day + '):\n' + wishTooltipLines.join('\n')
                                         : '';
 
                                       // Get visual staffing warning ranges for this group and day
@@ -4165,10 +4458,14 @@ useEffect(() => {
                                                 <div className={`col-start-2 h-full px-2 text-right font-medium flex items-center justify-end gap-1.5 ${group.color} ${getTextColorForBg(group.color)} rounded-none employee-name-cell overflow-hidden`}>
                                                     {hasDayWish && (
                                                       <span
-                                                        className="cursor-help inline-flex items-center text-amber-500 hover:text-amber-600 dark:text-amber-400 text-xs shrink-0 select-none print:hidden transition transform hover:scale-125"
+                                                        className={`cursor-help inline-flex items-center text-xs shrink-0 select-none print:hidden transition transform hover:scale-125 ${
+                                                          isFixedRequirement
+                                                            ? 'text-blue-600 hover:text-blue-700 dark:text-blue-400'
+                                                            : 'text-amber-500 hover:text-amber-600 dark:text-amber-400'
+                                                        }`}
                                                         title={wishTooltipText}
                                                       >
-                                                        ⭐
+                                                        {isFixedRequirement ? '🔒' : '⭐'}
                                                       </span>
                                                     )}
                                                     <span className={`truncate ${isSick ? 'line-through opacity-75' : ''}`} title={employee.name}>{employee.name}</span>
@@ -4263,12 +4560,20 @@ useEffect(() => {
                                                             return (
                                                                 <div
                                                                     key={`wish-zone-${employee.id}-${day}`}
-                                                                    className="absolute top-0 h-full pointer-events-none print:hidden border-x-2 border-dashed border-amber-400/70 bg-amber-400/10 dark:bg-amber-400/5 z-5"
+                                                                    className={`absolute top-0 h-full pointer-events-none print:hidden border-x-2 border-dashed z-5 ${
+                                                                        isFixedRequirement
+                                                                            ? 'border-blue-500/80 bg-blue-500/10 dark:bg-blue-500/10'
+                                                                            : 'border-amber-400/70 bg-amber-400/10 dark:bg-amber-400/5'
+                                                                    }`}
                                                                     style={{ left: `${left}%`, width: `${width}%` }}
                                                                     title={wishTooltipText}
                                                                 >
-                                                                    <span className="text-[9px] font-semibold text-amber-700 dark:text-amber-300 px-1 truncate select-none opacity-80 block bg-amber-100/60 dark:bg-amber-950/60 rounded-xs w-max">
-                                                                        ⭐ Wunschzeit
+                                                                    <span className={`text-[9px] font-semibold px-1 truncate select-none opacity-90 block rounded-xs w-max ${
+                                                                        isFixedRequirement
+                                                                            ? 'text-blue-800 dark:text-blue-200 bg-blue-100/80 dark:bg-blue-950/80 border border-blue-300 dark:border-blue-700'
+                                                                            : 'text-amber-700 dark:text-amber-300 bg-amber-100/60 dark:bg-amber-950/60'
+                                                                    }`}>
+                                                                        {isFixedRequirement ? '🔒 Feste Arbeitszeit' : '⭐ Wunschzeit'}
                                                                     </span>
                                                                 </div>
                                                             );
@@ -4333,23 +4638,30 @@ useEffect(() => {
                                                                     displayedTimeText = `${timeStringStart}-${timeStringEnd}`; // KORREKTUR: Start-End-Zeit für horizontal
                                                                 }
 
+                                                                const overriddenGroup = segment.overriddenGroupId ? groups.find(g => g.id === segment.overriddenGroupId) : null;
+                                                                const overriddenGroupName = overriddenGroup ? overriddenGroup.name : (segment.overriddenGroupId === 'no-group' ? 'Ohne Gruppe' : '');
+
+                                                                if (overriddenGroupName && showCategory) {
+                                                                    displayedCategoryText = `[${overriddenGroupName}] ${blockCategoryName}`;
+                                                                }
+
                                                                 return (
                                                                     <div
                                                                         key={blockKey}
                                                                         ref={el => shiftBlockRefs.current[blockKey] = el}
                                                                         className={`absolute h-full rounded-md flex flex-col items-center justify-center shadow-sm shift-block ${bgColorClass} ${textColorClass} overflow-hidden
-                                                                            ${borderHexColor ? 'border-2 border-dashed' : ''}
-                                                                        `} // Apply dashed border if borderHexColor exists // <-- HIER GEÄNDERT
+                                                                            ${borderHexColor ? 'border-2 border-solid ring-1 ring-white/50 dark:ring-black/40' : ''}
+                                                                        `}
                                                                         style={{
                                                                             left,
                                                                             width,
                                                                             boxSizing: 'border-box',
                                                                             minWidth: '0',
-                                                                            cursor: currentShiftBlockCursor,
+                                                                            cursor: 'grab',
                                                                             zIndex: 20,
-                                                                            borderColor: borderHexColor || undefined // Set border-color directly using hex value // <-- HIER GEÄNDERT
+                                                                            borderColor: borderHexColor || undefined
                                                                         }}
-                                                                        title={`${blockCategoryName}: ${segment.startTime} - ${segment.endTime}${segment.overriddenGroupId ? ` (Zugeordnet zu: ${groups.find(g => g.id === segment.overriddenGroupId)?.name || 'Ohne Gruppe'})` : ''}`}
+                                                                        title={`${blockCategoryName}: ${segment.startTime} - ${segment.endTime}${overriddenGroupName ? ` (Ausgeliehen an Gruppe: ${overriddenGroupName})` : ''}`}
                                                                         onMouseDown={(e) => {
                                                                             e.stopPropagation();
                                                                             handleMouseDown(e, shift, segIdx);
@@ -4361,8 +4673,16 @@ useEffect(() => {
                                                                         onMouseLeave={handleShiftBlockMouseLeave}
                                                                     >
                                                                         {showCategory && (
-                                                                            <span className={`${categoryTextSizeClass} font-semibold leading-tight text-center whitespace-nowrap px-1`}>
-                                                                                {displayedCategoryText}
+                                                                            <span className={`${categoryTextSizeClass} font-semibold leading-tight text-center whitespace-nowrap px-1 flex items-center gap-1`}>
+                                                                                {overriddenGroupName && (
+                                                                                    <span
+                                                                                        className="px-1 py-0.2 rounded text-[10px] font-bold text-white bg-black/40 shadow-xs"
+                                                                                        style={{ backgroundColor: borderHexColor || 'rgba(0,0,0,0.5)' }}
+                                                                                    >
+                                                                                        {overriddenGroupName}
+                                                                                    </span>
+                                                                                )}
+                                                                                <span>{blockCategoryName}</span>
                                                                             </span>
                                                                         )}
                                                                         {showTime && (
@@ -4555,8 +4875,10 @@ useEffect(() => {
                 onClearSchedule={handleClearSchedule}
                 onExportSchedule={handleExportSchedule}
                 onImportSchedule={handleImportSchedule}
+                onOpenGenerator={planAssistantEnabled ? () => setShowScheduleGeneratorModal(true) : undefined}
                 onCancel={() => setShowScheduleManagementModal(false)}
                 fileInputRef={fileInputScheduleRef}
+                isDimmed={showScheduleGeneratorModal}
               />
             )}
 
@@ -4564,12 +4886,25 @@ useEffect(() => {
             <SickLeaveModal
               isOpen={showSickLeaveModal}
               onClose={() => setShowSickLeaveModal(false)}
-              employees={employees}
+              employees={sortedEmployees}
               groups={groups}
               sickDays={masterSchedule.sickDays || {}}
               onToggleSickDay={handleToggleSickDay}
               onSetEmployeeSickDays={handleSetEmployeeSickDays}
               onClearAllSickDays={handleClearAllSickDays}
+            />
+
+            {/* NEU: Render the Schedule Generator Modal */}
+            <ScheduleGeneratorModal
+              isOpen={showScheduleGeneratorModal}
+              onClose={() => setShowScheduleGeneratorModal(false)}
+              activeScheduleTitle={weeklyPlanTitle}
+              employees={employees}
+              groups={groups}
+              facilitySettings={facilitySettings}
+              sickDays={masterSchedule.sickDays || {}}
+              onRunFullGeneration={handleRunFullGeneration}
+              onRunReplacementGeneration={handleRunReplacementGeneration}
             />
 
             {/* Render the New Version Popup */}
@@ -4591,6 +4926,18 @@ useEffect(() => {
               />
             )}
 
+            {showFacilitySettingsModal && (
+              <FacilitySettingsModal
+                isOpen={showFacilitySettingsModal}
+                onClose={() => setShowFacilitySettingsModal(false)}
+                settings={facilitySettings}
+                onSave={handleSaveFacilitySettings}
+                categories={categories}
+                subCategories={subCategories}
+                groups={groups}
+              />
+            )}
+
             {showSettingsModal && (
               <SettingsModal
                 isOpen={showSettingsModal}
@@ -4608,6 +4955,12 @@ useEffect(() => {
                 setCustomColorsLight={setCustomColorsLight}
                 customColorsDark={customColorsDark}
                 setCustomColorsDark={setCustomColorsDark}
+                planAssistantEnabled={planAssistantEnabled}
+                setPlanAssistantEnabled={setPlanAssistantEnabled}
+                onOpenFacilitySettings={() => {
+                  setShowSettingsModal(false);
+                  setShowFacilitySettingsModal(true);
+                }}
               />
             )}
 

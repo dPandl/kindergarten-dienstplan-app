@@ -1,12 +1,23 @@
-// Helper function to compare semantic versions (e.g., "1.0.0" vs "1.0.1")
+// Helper function to compare semantic versions (e.g., "Beta 2.0.2" vs "Beta 1.9.2" or "1.0.0" vs "1.0.1")
 export const compareVersions = (version1, version2) => {
-  const cleanV1 = version1.replace(/\s*\(.*\)\s*$/, '');
-  const cleanV2 = version2.replace(/\s*\(.*\)\s*$/, '');
-  const parts1 = cleanV1.split('.').map(Number);
-  const parts2 = cleanV2.split('.').map(Number);
-  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-    const p1 = parts1[i] || 0;
-    const p2 = parts2[i] || 0;
+  if (!version1 && !version2) return 0;
+  if (!version1) return -1;
+  if (!version2) return 1;
+
+  // Extrahiere die Ziffernblöcke (z.B. aus "Beta 2.0.2" -> [2, 0, 2])
+  const extractParts = (ver) => {
+    const match = String(ver).match(/(\d+(?:\.\d+)*)/);
+    if (!match) return [];
+    return match[1].split('.').map(n => parseInt(n, 10) || 0);
+  };
+
+  const parts1 = extractParts(version1);
+  const parts2 = extractParts(version2);
+
+  const maxLen = Math.max(parts1.length, parts2.length);
+  for (let i = 0; i < maxLen; i++) {
+    const p1 = parts1[i] !== undefined ? parts1[i] : 0;
+    const p2 = parts2[i] !== undefined ? parts2[i] : 0;
     if (p1 > p2) return 1;
     if (p1 < p2) return -1;
   }

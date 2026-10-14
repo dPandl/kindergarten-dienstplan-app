@@ -21,6 +21,7 @@ export const DEFAULT_CATEGORIES = [
     color: 'bg-orange-500',
     isDisposalTimeCategory: false,
     isCareCategory: true,
+    isLeadershipReleaseCategory: false,
   },
   {
     id: '_default_cat_verfuegung',
@@ -28,12 +29,23 @@ export const DEFAULT_CATEGORIES = [
     color: 'bg-green-500',
     isDisposalTimeCategory: true,
     isCareCategory: false,
+    isLeadershipReleaseCategory: false,
+  },
+  {
+    id: '_default_cat_leitungsfreistellung',
+    name: 'Leitungsfreistellung',
+    color: 'bg-indigo-500',
+    isDisposalTimeCategory: false,
+    isCareCategory: false,
+    isLeadershipReleaseCategory: true,
   },
 ];
 
 // Employee Type Order for sorting within a group
-// Normal employees come first (0), then Zusatzkraft (0.5), then special types (1)
+// Leadership comes first (-2, -1), then normal employees (0), then Zusatzkraft (0.5), then special types (1)
 export const EMPLOYEE_TYPE_ORDER = {
+  'leitung': -2,
+  'stellv_leitung': -1,
   'normal': 0,
   'zusatzkraft': 0.5,
   'apprentice': 1,

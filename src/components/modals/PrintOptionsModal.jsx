@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import CustomSelect from '../common/CustomSelect';
 
 const PrintOptionsModal = ({
   onPrint,
@@ -51,37 +52,37 @@ const PrintOptionsModal = ({
 
         {/* Gruppenfilter (bestehend) */}
         <div className="mb-4">
-          <label htmlFor="printGroupFilter" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="printGroupFilter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Gruppe filtern:
           </label>
-          <select
+          <CustomSelect
             id="printGroupFilter"
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
             value={selectedGroupIdFilter}
             onChange={(e) => setSelectedGroupIdFilter(e.target.value)}
-          >
-            {filteredGroupsForDisplayInFilter.map(group => (
-              <option key={group.id} value={group.id}>{group.name}</option>
-            ))}
-          </select>
+            options={(filteredGroupsForDisplayInFilter || []).map(group => ({
+              value: group.id,
+              label: group.name
+            }))}
+          />
         </div>
 
         {/* Mitarbeiterfilter im Druckmodal */}
         <div className="mb-4">
-          <label htmlFor="printEmployeeFilter" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="printEmployeeFilter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Mitarbeiter filtern:
           </label>
-          <select
+          <CustomSelect
             id="printEmployeeFilter"
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
             value={selectedEmployeeIdFilter}
             onChange={(e) => setSelectedEmployeeIdFilter(e.target.value)}
-          >
-            <option value="all">Alle Mitarbeiter</option>
-            {availableEmployeesForFilter.map(employee => (
-              <option key={employee.id} value={employee.id}>{employee.name}</option>
-            ))}
-          </select>
+            options={[
+              { value: 'all', label: 'Alle Mitarbeiter' },
+              ...(availableEmployeesForFilter || []).map(employee => ({
+                value: employee.id,
+                label: employee.name
+              }))
+            ]}
+          />
         </div>
 
         <div className="flex items-center mb-6">

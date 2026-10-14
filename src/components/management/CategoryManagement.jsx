@@ -100,6 +100,22 @@ const CategoryManagement = ({
                           <span className="text-xs text-red-500 ml-2"> (Nur eine Kategorie kann markiert werden)</span>
                       )}
                     </label>
+                    <label className={`flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-300 shadow-sm
+                      ${categories.some(c => c.isLeadershipReleaseCategory) && !editingCategoryId
+                        ? 'opacity-60 cursor-not-allowed'
+                        : 'cursor-pointer'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        name="isLeadershipReleaseCategory"
+                        checked={newCategory.isLeadershipReleaseCategory}
+                        onChange={(e) => setNewCategory({ ...newCategory, isLeadershipReleaseCategory: e.target.checked })}
+                        className="form-checkbox h-5 w-5 text-blue-600 rounded cursor-pointer"
+                        disabled={categories.some(c => c.isLeadershipReleaseCategory && c.id !== editingCategoryId)}
+                      />
+                      <span className="text-gray-700 font-medium">Als Leitungsfreistellung verwenden</span>
+                    </label>
                   </div>
                   <div className="flex flex-col sm:flex-row justify-center gap-4">
                     <button
@@ -134,6 +150,9 @@ const CategoryManagement = ({
                               )}
                               {category.isCareCategory && (
                                 <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Betreuung</span>
+                              )}
+                              {category.isLeadershipReleaseCategory && (
+                                <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">Leitungsfreistellung</span>
                               )}
                             </div>
                             <div>

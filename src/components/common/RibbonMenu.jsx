@@ -28,7 +28,9 @@ import {
   Thermometer,
   AlertTriangle,
   FolderOpen,
+  Building2,
 } from 'lucide-react';
+import CustomSelect from './CustomSelect';
 
 const RibbonMenu = ({
   // Data actions
@@ -60,6 +62,7 @@ const RibbonMenu = ({
   onOpenHelp,
   onOpenFeedback,
   onOpenSettings,
+  onOpenFacilitySettings,
   theme,
   toggleTheme,
   appVersion,
@@ -222,17 +225,27 @@ const RibbonMenu = ({
               Kindergarten Dienstplan
             </span>
             
-            <div 
-              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium transition ${
+            <button
+              type="button"
+              onClick={hasFileHandle ? onSave : onSaveAs}
+              className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition cursor-pointer select-none ${
                 hasFileHandle 
-                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50' 
-                  : 'bg-gray-200/70 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40' 
+                  : 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40'
               }`}
-              title={hasFileHandle ? 'Mit lokaler Datei verbunden' : 'Lokal im Browserspeicher'}
+              title={
+                hasFileHandle 
+                  ? 'Mit Speicherdatei verknüpft. Klicke hier oder nutze „Datei ➔ Speichern“ (Strg + S), um Änderungen in die Datei zu schreiben.' 
+                  : 'Warnung: Keine Speicherdatei verknüpft! Daten liegen nur im temporären Browserspeicher. Klicke hier oder nutze „Datei ➔ Speichern unter...“, um eine Sicherungsdatei anzulegen.'
+              }
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${hasFileHandle ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
-              <span>{hasFileHandle ? 'Gespeichert' : 'Lokal'}</span>
-            </div>
+              {hasFileHandle ? (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+              ) : (
+                <AlertTriangle size={12} className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              )}
+              <span>{hasFileHandle ? 'Datei verknüpft' : 'Keine Datei verknüpft'}</span>
+            </button>
           </div>
         </div>
 
@@ -260,6 +273,7 @@ const RibbonMenu = ({
           >
             {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
           </button>
+
 
           <button
             onClick={onOpenSettings}
@@ -379,13 +393,13 @@ const RibbonMenu = ({
           {/* TAB: Datei */}
           {activeTab === 'data' && (
             <div className="flex items-center gap-3 flex-wrap">
-              {/* Speichern Button */}
+              {/* 1. Speichern: Icon blue-600 */}
               <button
                 onClick={onSave}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800/60 rounded-xl transition group text-left shadow-sm hover:shadow cursor-pointer"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800/60 rounded-xl transition group text-left shadow-sm hover:shadow cursor-pointer"
                 title="Aktuelle Änderungen direkt in die Datei speichern"
               >
-                <div className="p-1.5 bg-emerald-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-blue-600 text-white rounded-lg group-hover:scale-105 transition transform">
                   <Save size={18} />
                 </div>
                 <div>
@@ -398,13 +412,13 @@ const RibbonMenu = ({
                 </div>
               </button>
 
-              {/* Speichern unter Button */}
+              {/* 2. Speichern unter: Icon blue-500 */}
               <button
                 onClick={onSaveAs}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-700/60 rounded-xl transition group text-left shadow-sm hover:shadow cursor-pointer"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800/60 rounded-xl transition group text-left shadow-sm hover:shadow cursor-pointer"
                 title="Komplette Daten in eine neue Datei speichern"
               >
-                <div className="p-1.5 bg-purple-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-blue-500 text-white rounded-lg group-hover:scale-105 transition transform">
                   <Download size={18} />
                 </div>
                 <div>
@@ -417,13 +431,13 @@ const RibbonMenu = ({
                 </div>
               </button>
 
-              {/* Öffnen Button */}
+              {/* 3. Öffnen: Icon blue-400 */}
               <button
                 onClick={onOpen}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-700/60 rounded-xl transition group text-left shadow-sm hover:shadow cursor-pointer"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800/60 rounded-xl transition group text-left shadow-sm hover:shadow cursor-pointer"
                 title="Gespeicherte Dienstplan-Datei öffnen"
               >
-                <div className="p-1.5 bg-blue-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-blue-400 text-white rounded-lg group-hover:scale-105 transition transform">
                   <FolderOpen size={18} />
                 </div>
                 <div>
@@ -439,16 +453,16 @@ const RibbonMenu = ({
               {/* Trennlinie */}
               <div className="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block" />
 
-              {/* Wochenpläne verwalten Button */}
+              {/* 4. Wochenpläne: Icon blue-300 mit weißem Icon */}
               <button
                 onClick={onOpenScheduleModal}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800/60 rounded-xl transition group text-left shadow-sm hover:shadow cursor-pointer"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800/60 rounded-xl transition group text-left shadow-sm hover:shadow cursor-pointer"
                 title="Wochenpläne anzeigen, durchwechseln oder neue Pläne erstellen"
               >
-                <div className="p-1.5 bg-indigo-600 text-white rounded-lg group-hover:scale-105 transition transform relative">
+                <div className="p-1.5 bg-blue-300 text-white rounded-lg group-hover:scale-105 transition transform relative">
                   <CalendarCheck2 size={18} />
                   {schedulesCount > 1 && (
-                    <span className="absolute -top-1.5 -right-1.5 bg-indigo-900 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white dark:border-gray-800">
+                    <span className="absolute -top-1.5 -right-1.5 bg-blue-900 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white dark:border-gray-800">
                       {schedulesCount}
                     </span>
                   )}
@@ -462,6 +476,8 @@ const RibbonMenu = ({
                   </span>
                 </div>
               </button>
+
+
 
               {/* Trennlinie */}
               <div className="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block" />
@@ -490,12 +506,12 @@ const RibbonMenu = ({
           {/* TAB: Mitarbeiter */}
           {activeTab === 'employees' && (
             <div className="flex items-center gap-3 flex-wrap">
-              {/* Mitarbeiter hinzufügen Button */}
+              {/* 1. Mitarbeiter hinzufügen: Icon indigo-600 */}
               <button
                 onClick={onOpenAddEmployee}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-700/60 rounded-xl transition group text-left shadow-sm hover:shadow"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800/60 rounded-xl transition group text-left shadow-sm hover:shadow"
               >
-                <div className="p-1.5 bg-blue-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-indigo-600 text-white rounded-lg group-hover:scale-105 transition transform">
                   <UserPlus size={18} />
                 </div>
                 <div>
@@ -508,12 +524,12 @@ const RibbonMenu = ({
                 </div>
               </button>
 
-              {/* Mitarbeiter Übersicht Button */}
+              {/* 2. Mitarbeiter Übersicht: Icon indigo-500 */}
               <button
                 onClick={onOpenEmployeeOverview}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-700/60 rounded-xl transition group text-left shadow-sm hover:shadow"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800/60 rounded-xl transition group text-left shadow-sm hover:shadow"
               >
-                <div className="p-1.5 bg-indigo-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-indigo-500 text-white rounded-lg group-hover:scale-105 transition transform">
                   <Users size={18} />
                 </div>
                 <div>
@@ -526,13 +542,13 @@ const RibbonMenu = ({
                 </div>
               </button>
 
-              {/* Krankmeldungen Button */}
+              {/* 3. Krankmeldungen Button: Icon indigo-400 */}
               {onOpenSickLeave && (
                 <button
                   onClick={onOpenSickLeave}
-                  className="flex items-center gap-2.5 px-3.5 py-2 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800/60 rounded-xl transition group text-left shadow-sm hover:shadow cursor-pointer"
+                  className="flex items-center gap-2.5 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800/60 rounded-xl transition group text-left shadow-sm hover:shadow cursor-pointer"
                 >
-                  <div className="p-1.5 bg-rose-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                  <div className="p-1.5 bg-indigo-400 text-white rounded-lg group-hover:scale-105 transition transform">
                     <Thermometer size={18} />
                   </div>
                   <div>
@@ -551,12 +567,12 @@ const RibbonMenu = ({
           {/* TAB: Gruppen */}
           {activeTab === 'groups' && (
             <div className="flex items-center gap-3 flex-wrap">
-              {/* Gruppe hinzufügen Button */}
+              {/* 1. Gruppe hinzufügen: Icon violet-600 */}
               <button
                 onClick={onOpenAddGroup}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-700/60 rounded-xl transition group text-left shadow-sm hover:shadow"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-violet-50 dark:bg-violet-950/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/60 rounded-xl transition group text-left shadow-sm hover:shadow"
               >
-                <div className="p-1.5 bg-indigo-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-violet-600 text-white rounded-lg group-hover:scale-105 transition transform">
                   <FolderPlus size={18} />
                 </div>
                 <div>
@@ -569,12 +585,12 @@ const RibbonMenu = ({
                 </div>
               </button>
 
-              {/* Gruppen-Übersicht Button */}
+              {/* 2. Gruppen-Übersicht: Icon violet-500 */}
               <button
                 onClick={onOpenGroupOverview}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-700/60 rounded-xl transition group text-left shadow-sm hover:shadow"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-violet-50 dark:bg-violet-950/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/60 rounded-xl transition group text-left shadow-sm hover:shadow"
               >
-                <div className="p-1.5 bg-purple-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-violet-500 text-white rounded-lg group-hover:scale-105 transition transform">
                   <Layers size={18} />
                 </div>
                 <div>
@@ -586,18 +602,40 @@ const RibbonMenu = ({
                   </span>
                 </div>
               </button>
+
+              {/* Trennlinie */}
+              <div className="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden sm:block" />
+
+              {/* 3. Einrichtungseinstellungen: Icon violet-400 */}
+              <button
+                onClick={onOpenFacilitySettings}
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-violet-50 dark:bg-violet-950/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 border border-violet-200 dark:border-violet-800/60 rounded-xl transition group text-left shadow-sm hover:shadow cursor-pointer"
+                title="Teamsitzungen, Leitungsabdeckung und Generator-Regeln"
+              >
+                <div className="p-1.5 bg-violet-400 text-white rounded-lg group-hover:scale-105 transition transform">
+                  <Building2 size={18} />
+                </div>
+                <div>
+                  <span className="block text-xs font-bold text-gray-800 dark:text-gray-100">
+                    Einrichtungseinstellungen
+                  </span>
+                  <span className="block text-[11px] text-gray-500 dark:text-gray-400">
+                    Teamsitzungen &amp; Regeln
+                  </span>
+                </div>
+              </button>
             </div>
           )}
 
           {/* TAB: Schichtblöcke */}
           {activeTab === 'categories' && (
             <div className="flex items-center gap-3 flex-wrap">
-              {/* Schichtblock hinzufügen Button */}
+              {/* 1. Schichtblock hinzufügen: Icon purple-600 */}
               <button
                 onClick={onOpenAddCategory}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-700/60 rounded-xl transition group text-left shadow-sm hover:shadow"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800/60 rounded-xl transition group text-left shadow-sm hover:shadow"
               >
-                <div className="p-1.5 bg-amber-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-purple-600 text-white rounded-lg group-hover:scale-105 transition transform">
                   <Tag size={18} />
                 </div>
                 <div>
@@ -610,12 +648,12 @@ const RibbonMenu = ({
                 </div>
               </button>
 
-              {/* Unterblock hinzufügen Button */}
+              {/* 2. Unterblock hinzufügen: Icon purple-500 */}
               <button
                 onClick={onOpenAddSubCategory}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-orange-50 dark:bg-orange-900/30 hover:bg-orange-100 dark:hover:bg-orange-900/50 border border-orange-200 dark:border-orange-700/60 rounded-xl transition group text-left shadow-sm hover:shadow"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800/60 rounded-xl transition group text-left shadow-sm hover:shadow"
               >
-                <div className="p-1.5 bg-orange-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-purple-500 text-white rounded-lg group-hover:scale-105 transition transform">
                   <BookmarkPlus size={18} />
                 </div>
                 <div>
@@ -628,12 +666,12 @@ const RibbonMenu = ({
                 </div>
               </button>
 
-              {/* Schichtblöcke-Übersicht Button */}
+              {/* 3. Schichtblöcke-Übersicht: Icon purple-400 */}
               <button
                 onClick={onOpenCategoryOverview}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 border border-yellow-200 dark:border-yellow-700/60 rounded-xl transition group text-left shadow-sm hover:shadow"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-800/60 rounded-xl transition group text-left shadow-sm hover:shadow"
               >
-                <div className="p-1.5 bg-yellow-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-purple-400 text-white rounded-lg group-hover:scale-105 transition transform">
                   <Layers size={18} />
                 </div>
                 <div>
@@ -651,12 +689,12 @@ const RibbonMenu = ({
           {/* TAB: Verfügungszeiten */}
           {activeTab === 'rules' && (
             <div className="flex items-center gap-3 flex-wrap">
-              {/* Regel hinzufügen Button */}
+              {/* 1. Regel hinzufügen: Icon fuchsia-600 */}
               <button
                 onClick={onOpenAddDisposalRule}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-teal-50 dark:bg-teal-900/30 hover:bg-teal-100 dark:hover:bg-teal-900/50 border border-teal-200 dark:border-teal-700/60 rounded-xl transition group text-left shadow-sm hover:shadow"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-fuchsia-50 dark:bg-fuchsia-950/30 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/50 border border-fuchsia-200 dark:border-fuchsia-800/60 rounded-xl transition group text-left shadow-sm hover:shadow"
               >
-                <div className="p-1.5 bg-teal-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-fuchsia-600 text-white rounded-lg group-hover:scale-105 transition transform">
                   <Clock size={18} />
                 </div>
                 <div>
@@ -669,12 +707,12 @@ const RibbonMenu = ({
                 </div>
               </button>
 
-              {/* Regeln-Übersicht Button */}
+              {/* 2. Regeln-Übersicht: Icon fuchsia-500 */}
               <button
                 onClick={onOpenDisposalRulesOverview || onOpenDisposalRules}
-                className="flex items-center gap-2.5 px-3.5 py-2 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-700/60 rounded-xl transition group text-left shadow-sm hover:shadow"
+                className="flex items-center gap-2.5 px-3.5 py-2 bg-fuchsia-50 dark:bg-fuchsia-950/30 hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/50 border border-fuchsia-200 dark:border-fuchsia-800/60 rounded-xl transition group text-left shadow-sm hover:shadow"
               >
-                <div className="p-1.5 bg-emerald-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-fuchsia-500 text-white rounded-lg group-hover:scale-105 transition transform">
                   <Layers size={18} />
                 </div>
                 <div>
@@ -748,40 +786,38 @@ const RibbonMenu = ({
               <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
 
               {/* Gruppe filtern */}
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 min-w-[140px]">
                 <label className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                   Gruppe filtern
                 </label>
-                <select
+                <CustomSelect
                   value={selectedGroupIdFilter}
                   onChange={(e) => setSelectedGroupIdFilter(e.target.value)}
-                  className="h-8 pl-2.5 pr-7 text-xs rounded-lg border border-gray-200 dark:border-gray-600
-                    bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100
-                    focus:outline-none focus:ring-2 focus:ring-pink-400/50 transition cursor-pointer"
-                >
-                  {filteredGroupsForDisplayInFilter.map(group => (
-                    <option key={group.id} value={group.id}>{group.name}</option>
-                  ))}
-                </select>
+                  size="sm"
+                  options={filteredGroupsForDisplayInFilter.map((group) => ({
+                    value: group.id,
+                    label: group.name,
+                  }))}
+                />
               </div>
 
               {/* Mitarbeiter filtern */}
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 min-w-[150px]">
                 <label className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                   Mitarbeiter filtern
                 </label>
-                <select
+                <CustomSelect
                   value={selectedEmployeeIdFilter}
                   onChange={(e) => setSelectedEmployeeIdFilter(e.target.value)}
-                  className="h-8 pl-2.5 pr-7 text-xs rounded-lg border border-gray-200 dark:border-gray-600
-                    bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100
-                    focus:outline-none focus:ring-2 focus:ring-pink-400/50 transition cursor-pointer"
-                >
-                  <option value="all">Alle Mitarbeiter</option>
-                  {availableEmployeesForFilter.map(employee => (
-                    <option key={employee.id} value={employee.id}>{employee.name}</option>
-                  ))}
-                </select>
+                  size="sm"
+                  options={[
+                    { value: 'all', label: 'Alle Mitarbeiter' },
+                    ...availableEmployeesForFilter.map((employee) => ({
+                      value: employee.id,
+                      label: employee.name,
+                    })),
+                  ]}
+                />
               </div>
 
               {/* Trennlinie */}
@@ -793,13 +829,13 @@ const RibbonMenu = ({
                 onClick={() => setHideAbsentEmployees?.(prev => !prev)}
                 className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border transition group text-left cursor-pointer shadow-xs ${
                   hideAbsentEmployees
-                    ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300'
+                    ? 'bg-pink-50 dark:bg-pink-950/40 border-pink-300 dark:border-pink-800 text-pink-700 dark:text-pink-300'
                     : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/60'
                 }`}
                 title="Blendet Personen an Tagen, an denen sie krank sind oder Schultag haben, komplett aus dem Dienstplan aus."
               >
                 <div className={`p-1.5 rounded-lg transition transform group-hover:scale-105 ${
-                  hideAbsentEmployees ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                  hideAbsentEmployees ? 'bg-pink-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                 }`}>
                   {hideAbsentEmployees ? <EyeOff size={16} /> : <Eye size={16} />}
                 </div>
@@ -810,7 +846,7 @@ const RibbonMenu = ({
                     </span>
                     <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
                       hideAbsentEmployees 
-                        ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200' 
+                        ? 'bg-pink-100 dark:bg-pink-900/60 text-pink-800 dark:text-pink-200' 
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-500'
                     }`}>
                       {hideAbsentEmployees ? 'Aktiv' : 'Aus'}
@@ -867,48 +903,46 @@ const RibbonMenu = ({
             <div className="flex items-center gap-4 flex-wrap">
 
               {/* Gruppe filtern */}
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 min-w-[150px]">
                 <label className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                   Gruppe
                 </label>
-                <select
+                <CustomSelect
                   value={printGroupFilter}
                   onChange={e => {
                     const newGroup = e.target.value;
                     if (setPrintGroupFilter) setPrintGroupFilter(newGroup);
                   }}
-                  className="h-8 pl-2.5 pr-7 text-xs rounded-lg border border-gray-200 dark:border-gray-600
-                    bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100
-                    focus:outline-none focus:ring-2 focus:ring-rose-400/50 transition cursor-pointer"
-                >
-                  {(filteredGroupsForDisplayInPrintFilter || filteredGroupsForDisplayInFilter).map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
+                  options={(filteredGroupsForDisplayInPrintFilter || filteredGroupsForDisplayInFilter || []).map(g => ({
+                    value: g.id,
+                    label: g.name
+                  }))}
+                  size="sm"
+                />
               </div>
 
               {/* Mitarbeiter filtern */}
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 min-w-[180px]">
                 <label className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                   Mitarbeiter
                 </label>
-                <select
+                <CustomSelect
                   value={printEmployeeFilter}
                   onChange={e => {
                     if (setPrintEmployeeFilter) setPrintEmployeeFilter(e.target.value);
                   }}
-                  className="h-8 pl-2.5 pr-7 text-xs rounded-lg border border-gray-200 dark:border-gray-600
-                    bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100
-                    focus:outline-none focus:ring-2 focus:ring-rose-400/50 transition cursor-pointer"
-                >
-                  <option value="all">Alle Mitarbeiter</option>
-                  {(availableEmployeesForPrintFilter || availableEmployeesForFilter).map(e => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
-                  ))}
-                </select>
+                  options={[
+                    { value: 'all', label: 'Alle Mitarbeiter' },
+                    ...(availableEmployeesForPrintFilter || availableEmployeesForFilter || []).map(e => ({
+                      value: e.id,
+                      label: e.name
+                    }))
+                  ]}
+                  size="sm"
+                />
               </div>
 
-              {/* Wochenübersicht Toggle-Button */}
+              {/* 1. Wochenübersicht Toggle-Button: Icon rose-600 */}
               <button
                 type="button"
                 onClick={() => setPrintWeeklySummary?.(prev => !prev)}
@@ -946,13 +980,13 @@ const RibbonMenu = ({
               {/* Trennlinie */}
               <div className="h-8 w-px bg-gray-200 dark:bg-gray-700" />
 
-              {/* Drucken-Button */}
+              {/* 2. Drucken-Button: Icon rose-500 */}
               <button
                 onClick={onPrint}
                 className="flex items-center gap-2.5 px-3.5 py-2 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800/60 rounded-xl transition group text-left shadow-sm hover:shadow cursor-pointer"
                 title="Dienstplan drucken oder als PDF speichern"
               >
-                <div className="p-1.5 bg-rose-600 text-white rounded-lg group-hover:scale-105 transition transform">
+                <div className="p-1.5 bg-rose-500 text-white rounded-lg group-hover:scale-105 transition transform">
                   <Printer size={18} />
                 </div>
                 <div>

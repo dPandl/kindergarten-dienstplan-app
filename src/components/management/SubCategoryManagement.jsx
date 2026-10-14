@@ -1,6 +1,7 @@
 import React from 'react';
 import ColorPickerDropdown from '../common/ColorPickerDropdown';
 import { blockColors, PAUSE_CATEGORY } from '../../constants/scheduleConstants';
+import CustomSelect from '../common/CustomSelect';
 
 const SubCategoryManagement = ({
   isSubCategoriesSectionMinimized,
@@ -49,18 +50,17 @@ const SubCategoryManagement = ({
                       className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200"
                       placeholder="Kategoriename (z.B. Wald, Sprachförderung)"
                     />
-                    <select
+                    <CustomSelect
                       name="parentCategoryId"
-                      value={newSubCategory.parentCategoryId}
+                      value={newSubCategory.parentCategoryId || ''}
                       onChange={(e) => setNewSubCategory({ ...newSubCategory, parentCategoryId: e.target.value })}
-                      className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 cursor-pointer"
-                    >
-                      <option value="">Übergeordnete Kategorie auswählen</option>
-                      <option value={PAUSE_CATEGORY.id}>{PAUSE_CATEGORY.name}</option>
-                      {categories.map(category => (
-                        <option key={category.id} value={category.id}>{category.name}</option>
-                      ))}
-                    </select>
+                      placeholder="Übergeordnete Kategorie auswählen"
+                      options={[
+                        { value: '', label: 'Übergeordnete Kategorie auswählen' },
+                        { value: PAUSE_CATEGORY.id, label: PAUSE_CATEGORY.name },
+                        ...categories.map(category => ({ value: category.id, label: category.name }))
+                      ]}
+                    />
                     <ColorPickerDropdown
                       selectedColor={newSubCategory.color}
                       onColorChange={(color) => setNewSubCategory({ ...newSubCategory, color: color })}

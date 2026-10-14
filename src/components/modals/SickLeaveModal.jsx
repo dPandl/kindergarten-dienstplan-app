@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Thermometer, Search, Check, X, ShieldAlert, Sparkles } from 'lucide-react';
 import BaseModal from '../common/BaseModal';
+import CustomSelect from '../common/CustomSelect';
 import { WEEK_DAYS_PLAN } from '../../constants/scheduleConstants';
 
 const SickLeaveModal = ({
@@ -82,17 +83,17 @@ const SickLeaveModal = ({
           </div>
 
           {/* Gruppen-Filter */}
-          <select
+          <CustomSelect
             value={selectedGroupFilter}
             onChange={(e) => setSelectedGroupFilter(e.target.value)}
-            className="py-1.5 px-3 text-sm bg-gray-50 dark:bg-gray-700/60 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-          >
-            <option value="all">Alle Gruppen</option>
-            {groups.map(g => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-            <option value="no-group">Ohne Gruppe</option>
-          </select>
+            className="w-44"
+            size="sm"
+            options={[
+              { value: 'all', label: 'Alle Gruppen' },
+              ...groups.map((g) => ({ value: g.id, label: g.name })),
+              { value: 'no-group', label: 'Ohne Gruppe' },
+            ]}
+          />
         </div>
 
         {/* Alle abwählen Button */}

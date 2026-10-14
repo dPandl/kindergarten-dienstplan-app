@@ -75,7 +75,17 @@ const EmployeeListModalContent = ({
                     Gruppe: {employeeGroup?.name || 'Ohne Gruppe (Springer)'}
                   </span>
                   <div className="flex flex-wrap gap-1">
-                    {employee.type !== 'normal' && employee.type !== 'zusatzkraft' && (
+                    {employee.type === 'leitung' && (
+                      <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/80 text-indigo-800 dark:text-indigo-200 px-2 py-0.5 rounded-full font-semibold border border-indigo-300 dark:border-indigo-700/60 shadow-2xs">
+                        🏢 Leitung{Number(employee.leadershipReleasePercent) > 0 ? ` (${employee.leadershipReleasePercent}%)` : ''}
+                      </span>
+                    )}
+                    {employee.type === 'stellv_leitung' && (
+                      <span className="text-[10px] bg-purple-100 dark:bg-purple-900/80 text-purple-800 dark:text-purple-200 px-2 py-0.5 rounded-full font-semibold border border-purple-300 dark:border-purple-700/60 shadow-2xs">
+                        🏢 stellv. Leitung{Number(employee.leadershipReleasePercent) > 0 ? ` (${employee.leadershipReleasePercent}%)` : ''}
+                      </span>
+                    )}
+                    {employee.type !== 'normal' && employee.type !== 'zusatzkraft' && employee.type !== 'leitung' && employee.type !== 'stellv_leitung' && (
                       <span className="text-[10px] bg-white/90 dark:bg-gray-800/90 text-gray-800 dark:text-gray-200 px-2 py-0.5 rounded-full font-medium shadow-2xs">
                         {employee.type === 'apprentice'
                           ? 'Auszubildender'

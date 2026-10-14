@@ -42,6 +42,7 @@ export const checkGroupStaffingWarnings = (
 
   // Create a minute-by-minute timeline for the day (0 to 24*60-1 minutes)
   const dailyTimeline = new Array(24 * 60).fill(0);
+  const realEducatorTimeline = new Array(24 * 60).fill(0);
 
   allShifts.filter(shift => shift.dayOfWeek === dayOfWeek).forEach(shift => {
     const employee = allEmployees.find(emp => emp.id === shift.employeeId);
@@ -52,7 +53,8 @@ export const checkGroupStaffingWarnings = (
     if (isSick) return;
 
     // Wenn Azubi an einem Schultag (nicht-Anwesenheitstag) ist, zählt seine Anwesenheit ebenfalls nicht
-    const isSchoolDay = (employee.type !== 'normal' && employee.type !== 'zusatzkraft') && !(employee.presenceDays || []).includes(dayOfWeek);
+    const isSpecialType = employee.type !== 'normal' && employee.type !== 'zusatzkraft';
+    const isSchoolDay = isSpecialType && !(employee.presenceDays || []).includes(dayOfWeek);
     if (isSchoolDay) return;
 
     shift.segments.forEach(segment => {
@@ -74,6 +76,7 @@ export const checkGroupStaffingWarnings = (
         for (let m = startMinutes; m < endMinutes; m++) {
           if (m >= 0 && m < 24 * 60) {
             dailyTimeline[m]++;
+            if (!isSpecialType) realEducatorTimeline[m]++;
           }
         }
       }
@@ -85,17 +88,21 @@ export const checkGroupStaffingWarnings = (
     const rangeEndMinutes = timeToMinutes(range.end);
 
     let currentWarningStart = -1;
+    let currentRealWarningStart = -1;
 
     for (let currentMinute = rangeStartMinutes; currentMinute < rangeEndMinutes; currentMinute += 15) {
       let minStaffInSegment = Infinity;
+      let minRealEducatorsInSegment = Infinity;
       let segmentEnd = Math.min(currentMinute + 15, rangeEndMinutes);
 
       if (currentMinute < segmentEnd) {
         for (let m = currentMinute; m < segmentEnd; m++) {
           minStaffInSegment = Math.min(minStaffInSegment, dailyTimeline[m]);
+          minRealEducatorsInSegment = Math.min(minRealEducatorsInSegment, realEducatorTimeline[m]);
         }
       } else {
         minStaffInSegment = 0;
+        minRealEducatorsInSegment = 0;
       }
 
       // Prüfung der Randzeiten für den spezifischen Tag
@@ -105,6 +112,11 @@ export const checkGroupStaffingWarnings = (
           staffingWarningRanges.push({ startMinutes: currentWarningStart, endMinutes: currentMinute });
           textWarnings.push(`weniger als ${minStaffRequired} in Betreuung (${minutesToTime(currentWarningStart)}-${minutesToTime(currentMinute)})`);
           currentWarningStart = -1;
+        }
+        if (currentRealWarningStart !== -1) {
+          staffingWarningRanges.push({ startMinutes: currentRealWarningStart, endMinutes: currentMinute });
+          textWarnings.push(`keine echte Fachkraft in Betreuung (${minutesToTime(currentRealWarningStart)}-${minutesToTime(currentMinute)})`);
+          currentRealWarningStart = -1;
         }
         continue;
       }
@@ -120,11 +132,28 @@ export const checkGroupStaffingWarnings = (
           currentWarningStart = -1;
         }
       }
+
+      if (minRealEducatorsInSegment < 1) {
+        if (currentRealWarningStart === -1) {
+          currentRealWarningStart = currentMinute;
+        }
+      } else {
+        if (currentRealWarningStart !== -1) {
+          staffingWarningRanges.push({ startMinutes: currentRealWarningStart, endMinutes: currentMinute });
+          textWarnings.push(`keine echte Fachkraft in Betreuung (${minutesToTime(currentRealWarningStart)}-${minutesToTime(currentMinute)})`);
+          currentRealWarningStart = -1;
+        }
+      }
     }
 
     if (currentWarningStart !== -1) {
       staffingWarningRanges.push({ startMinutes: currentWarningStart, endMinutes: rangeEndMinutes });
       textWarnings.push(`weniger als ${minStaffRequired} in Betreuung (${minutesToTime(currentWarningStart)}-${minutesToTime(rangeEndMinutes)})`);
+    }
+
+    if (currentRealWarningStart !== -1) {
+      staffingWarningRanges.push({ startMinutes: currentRealWarningStart, endMinutes: rangeEndMinutes });
+      textWarnings.push(`keine echte Fachkraft in Betreuung (${minutesToTime(currentRealWarningStart)}-${minutesToTime(rangeEndMinutes)})`);
     }
   });
 
@@ -170,6 +199,16 @@ export const calculateDailyWorkMetrics = (shiftsForDay, categories, subCategorie
     const effectiveCategory = categoryMap.get(effectiveCategoryId);
     if (effectiveCategory && effectiveCategory.isDisposalTimeCategory) {
       totalDisposalMinutes += duration;
+    }
+  }
+
+  // Lücken zwischen Schichten / Segmenten von mind. 15 Minuten gelten nach § 4 ArbZG als Ruhepause
+  for (let i = 0; i < sortedSegments.length - 1; i++) {
+    const endCurrent = timeToMinutes(sortedSegments[i].endTime);
+    const startNext = timeToMinutes(sortedSegments[i + 1].startTime);
+    const gap = startNext - endCurrent;
+    if (gap >= 15) {
+      totalBreakMinutes += gap;
     }
   }
 

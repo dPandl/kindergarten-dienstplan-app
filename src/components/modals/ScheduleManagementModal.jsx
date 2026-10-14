@@ -18,7 +18,8 @@ import {
   Search,
   Layers,
   ArrowDown,
-  ArrowUp
+  ArrowUp,
+  Wand2
 } from 'lucide-react';
 
 const formatDateTime = (isoString) => {
@@ -69,8 +70,10 @@ const ScheduleManagementModal = ({
   onRenameSchedule,
   onExportSchedule,
   onImportSchedule,
+  onOpenGenerator,
   onCancel,
   fileInputRef,
+  isDimmed = false,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [newPlanTitle, setNewPlanTitle] = useState('');
@@ -190,8 +193,8 @@ const ScheduleManagementModal = ({
     return list;
   }, [schedules, searchQuery, sortField, sortDirection]);
 
-  // Exportiert einen spezifischen Plan als .wochenplan Datei
-  const handleExportSingleSchedule = (plan) => {
+  // Exportiert einen spezifischen Plan als .wochenplan Datei (Speichern unter)
+  const handleExportSingleSchedule = async (plan) => {
     try {
       const dataToExport = {
         masterSchedule: {
@@ -213,6 +216,28 @@ const ScheduleManagementModal = ({
       const year = now.getFullYear();
       const filename = `${sanitizedTitle}_${day}.${month}.${year}.wochenplan`;
 
+      if (window.showSaveFilePicker) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [
+              {
+                description: 'Wochenplan Datei',
+                accept: { 'application/wochenplan+json': ['.wochenplan'] },
+              },
+            ],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(jsonString);
+          await writable.close();
+          return;
+        } catch (pickerErr) {
+          if (pickerErr.name === 'AbortError') return;
+          console.error('Fehler bei showSaveFilePicker, Fallback auf Download:', pickerErr);
+        }
+      }
+
+      // Fallback: Direkter Download
       const blob = new Blob([jsonString], { type: 'application/wochenplan+json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -223,7 +248,7 @@ const ScheduleManagementModal = ({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Fehler beim Exportieren:', err);
+      console.error('Fehler beim Speichern unter:', err);
     }
   };
 
@@ -239,16 +264,20 @@ const ScheduleManagementModal = ({
   return createPortal(
     <div
       style={{ zIndex: 110 }}
-      className={`fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 print-hidden-modal transition-all duration-300 ease-out ${
-        isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
-      }`}
+      className={`fixed inset-0 flex items-center justify-center p-4 print-hidden-modal transition-all duration-300 ease-out ${
+        isDimmed ? 'bg-black/30 backdrop-blur-[2px]' : 'bg-black/60 backdrop-blur-sm'
+      } ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       onClick={(e) => {
-        if (e.target === e.currentTarget) handleCloseAndAction(onCancel);
+        if (!isDimmed && e.target === e.currentTarget) handleCloseAndAction(onCancel);
       }}
     >
       <div
         className={`bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-3xl shadow-2xl p-6 max-w-5xl w-full relative border border-gray-200 dark:border-gray-700/80 transform transition-all duration-300 ease-out flex flex-col h-[650px] max-h-[92vh] ${
-          isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+          isDimmed
+            ? 'scale-[0.93] opacity-70 translate-y-[-10px] pointer-events-none select-none blur-[0.5px] brightness-95'
+            : isVisible
+            ? 'scale-100 opacity-100 translate-y-0'
+            : 'scale-95 opacity-0 translate-y-2'
         }`}
       >
         {/* Header */}
@@ -300,6 +329,18 @@ const ScheduleManagementModal = ({
               <Plus size={14} />
               <span>Neuer Plan</span>
             </button>
+
+            {onOpenGenerator && (
+              <button
+                type="button"
+                onClick={onOpenGenerator}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 active:from-purple-800 active:to-indigo-800 text-white rounded-lg text-xs font-semibold shadow-sm transition hover:scale-[1.02] active:scale-[0.98] cursor-pointer whitespace-nowrap"
+                title="Dienstplan-Assistent / Generator öffnen"
+              >
+                <Wand2 size={14} />
+                <span>Plan-Assistent</span>
+              </button>
+            )}
           </form>
         </div>
 
@@ -517,7 +558,7 @@ const ScheduleManagementModal = ({
                         type="button"
                         onClick={() => handleExportSingleSchedule(plan)}
                         className="p-1.5 text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 rounded-md hover:bg-blue-50 dark:hover:bg-blue-950/40 transition cursor-pointer"
-                        title="Diesen Plan als separate .wochenplan-Datei exportieren"
+                        title="Diesen Plan unter neuem Namen/Ort speichern (.wochenplan)"
                       >
                         <FileDown size={13} />
                       </button>
@@ -563,15 +604,15 @@ const ScheduleManagementModal = ({
               </label>
             </div>
 
-            {/* Export des aktuellen Plans */}
+            {/* Speichern unter des aktuellen Plans */}
             <button
               type="button"
               onClick={() => handleCloseAndAction(onExportSchedule)}
               className="flex items-center gap-1.5 py-1.5 px-2.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer"
-              title="Aktuellen Plan als separate .wochenplan-Datei exportieren"
+              title="Aktuellen Plan als separate Datei speichern unter..."
             >
               <FileDown size={13} />
-              <span>Aktiven Plan exportieren</span>
+              <span>Speichern unter...</span>
             </button>
 
           </div>

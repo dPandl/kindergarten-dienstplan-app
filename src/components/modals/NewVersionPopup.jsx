@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Sparkles } from 'lucide-react';
+import { X, Sparkles, Sliders, Bug } from 'lucide-react';
 import { compareVersions } from '../../utils/timeUtils';
 
-const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
+const NewVersionPopup = ({ version, onClose, releaseNotes = [] }) => {
   const [showHistory, setShowHistory] = useState(false);
   const [isVisible, setIsVisible] = useState(false); // State für Fade-In/Out
 
@@ -34,13 +34,14 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
       }`}
     >
       <div
-        className={`bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-2xl shadow-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto transform transition-all duration-300 ease-out border border-gray-200/80 dark:border-gray-700/80 ${
+        className={`bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col transform transition-all duration-300 ease-out border border-gray-200/80 dark:border-gray-700/80 ${
           isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
-        } relative`}
+        } relative overflow-hidden`}
       >
+        {/* Schließen-Button oben rechts (bleibt fest fixiert und scrollt nicht mit) */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition z-20"
           aria-label="Schließen"
         >
           <X size={20} />
@@ -48,63 +49,75 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
 
         {!showHistory ? (
           // Ansicht für die aktuelle neue Version
-          <>
-            {/* Bedingte Anzeige für den Haupt-Update-Titel */}
-            {currentVersionNotes?.optionalTitle ? (
-              <>
-                <h3 className="text-4xl font-bold text-gray-800 mb-2 text-center">
-                  {currentVersionNotes.optionalTitle}
+          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="p-6 overflow-y-auto flex-1">
+              {/* Bedingte Anzeige für den Haupt-Update-Titel */}
+              {currentVersionNotes?.optionalTitle ? (
+                <>
+                  <h3 className="text-4xl font-bold text-gray-800 mb-2 text-center pr-8 pl-8">
+                    {currentVersionNotes.optionalTitle}
+                  </h3>
+                  <p className="text-xl text-gray-600 mb-4 text-center">
+                    Version {version}
+                  </p>
+                </>
+              ) : (
+                <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center pr-8 pl-8">
+                  Update: Version {version}
                 </h3>
-                <p className="text-xl text-gray-600 mb-4 text-center">
-                  Version {version}
-                </p>
-              </>
-            ) : (
-              <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">
-                Update: Version {version}
-              </h3>
-            )}
+              )}
 
-            <p className="text-gray-700 mb-4">
-              Willkommen zurück! Diese Version enthält wichtige Verbesserungen und neue Funktionen, um deine Planung noch effizienter zu gestalten.
-            </p>
+              <p className="text-gray-700 mb-4">
+                Willkommen zurück! Diese Version enthält wichtige Verbesserungen und neue Funktionen, um deine Planung noch effizienter zu gestalten.
+              </p>
 
-            {currentVersionNotes && currentVersionNotes.whatsNew.length > 0 && (
-              <div>
-                <p className="font-semibold text-base text-gray-700">Was ist neu:</p>
-                <ul className="list-disc list-outside pl-5 space-y-1">
-                  {currentVersionNotes.whatsNew.map((item, index) => (
-                    <li key={index} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
-                  ))}
-                </ul>
-              </div>
-            )}
+              {currentVersionNotes && currentVersionNotes.whatsNew.length > 0 && (
+                <div>
+                  <p className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-2">
+                    <Sparkles size={18} className="text-amber-500 flex-shrink-0" />
+                    <span>Was ist neu:</span>
+                  </p>
+                  <ul className="list-disc list-outside pl-5 space-y-1.5">
+                    {currentVersionNotes.whatsNew.map((item, index) => (
+                      <li key={index} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-            {currentVersionNotes && currentVersionNotes.adjustments.length > 0 && (
-              <div>
-                <p className="font-semibold text-base text-gray-700 mt-4">Anpassungen:</p>
-                <ul className="list-disc list-outside pl-5 space-y-1">
-                  {currentVersionNotes.adjustments.map((item, index) => (
-                    <li key={index} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
-                  ))}
-                </ul>
-              </div>
-            )}
+              {currentVersionNotes && currentVersionNotes.adjustments.length > 0 && (
+                <div>
+                  <p className="font-bold text-lg text-gray-900 dark:text-gray-100 mt-5 mb-2 flex items-center gap-2">
+                    <Sliders size={18} className="text-blue-500 flex-shrink-0" />
+                    <span>Anpassungen:</span>
+                  </p>
+                  <ul className="list-disc list-outside pl-5 space-y-1.5">
+                    {currentVersionNotes.adjustments.map((item, index) => (
+                      <li key={index} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-            {currentVersionNotes && currentVersionNotes.bugFixes.length > 0 && (
-              <div>
-                <p className="font-semibold text-base text-gray-700 mt-4">Fehlerbehebungen:</p>
-                <ul className="list-disc list-outside pl-5 space-y-1">
-                  {currentVersionNotes.bugFixes.map((item, index) => (
-                    <li key={index} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
-                  ))}
-                </ul>
-              </div>
-            )}
+              {currentVersionNotes && currentVersionNotes.bugFixes.length > 0 && (
+                <div>
+                  <p className="font-bold text-lg text-gray-900 dark:text-gray-100 mt-5 mb-2 flex items-center gap-2">
+                    <Bug size={18} className="text-rose-500 flex-shrink-0" />
+                    <span>Fehlerbehebungen:</span>
+                  </p>
+                  <ul className="list-disc list-outside pl-5 space-y-1.5">
+                    {currentVersionNotes.bugFixes.map((item, index) => (
+                      <li key={index} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
 
-            <div className="flex justify-center mt-6">
+            {/* Feste Buttons unten am Rand */}
+            <div className="flex justify-center p-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 z-10">
               <button
-                onClick={handleClose} // Nutzt den neuen handleClose
+                onClick={handleClose}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition hover:scale-105 duration-300 ease-in-out mr-4"
               >
                 Verstanden!
@@ -118,15 +131,19 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
                 </button>
               )}
             </div>
-          </>
+          </div>
         ) : (
           // Ansicht für den Updateverlauf
-          <>
-            <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">Updateverlauf</h3>
-            <div className="space-y-6">
-              {releaseNotes.sort((a, b) => compareVersions(b.version, a.version)).map((note, index) => (
-                <div key={index} className="p-3 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
-                  <h4 className="font-semibold text-xl text-gray-800 mb-0">
+          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="px-6 pt-6 pb-2">
+              <h3 className="text-2xl font-bold text-gray-800 mb-0 text-center pr-8 pl-8">Updateverlauf</h3>
+            </div>
+
+            {/* Scrollbarer Inhaltsbereich */}
+            <div className="p-6 pt-4 overflow-y-auto flex-1 space-y-6">
+              {[...releaseNotes].sort((a, b) => compareVersions(b.version, a.version)).map((note, index) => (
+                <div key={index} className="p-4 rounded-lg bg-gray-50 border border-gray-200 shadow-sm">
+                  <h4 className="font-bold text-xl text-gray-800 mb-0">
                     Version {note.version}
                   </h4>
                   {note.optionalTitle && (
@@ -134,11 +151,14 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
                       ({note.optionalTitle})
                     </p>
                   )}
-                  <div className="mt-2 text-base space-y-2">
+                  <div className="mt-3 text-base space-y-3">
                     {note.whatsNew.length > 0 && (
                       <div>
-                        <p className="font-semibold text-base text-gray-700">Was ist neu:</p>
-                        <ul className="list-disc list-outside pl-5 space-y-1">
+                        <p className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-2">
+                          <Sparkles size={18} className="text-amber-500 flex-shrink-0" />
+                          <span>Was ist neu:</span>
+                        </p>
+                        <ul className="list-disc list-outside pl-5 space-y-1.5">
                           {note.whatsNew.map((item, i) => (
                             <li key={i} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
                           ))}
@@ -147,8 +167,11 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
                     )}
                     {note.adjustments.length > 0 && (
                       <div>
-                        <p className="font-semibold text-base text-gray-700 mt-4">Anpassungen:</p>
-                        <ul className="list-disc list-outside pl-5 space-y-1">
+                        <p className="font-bold text-lg text-gray-900 dark:text-gray-100 mt-5 mb-2 flex items-center gap-2">
+                          <Sliders size={18} className="text-blue-500 flex-shrink-0" />
+                          <span>Anpassungen:</span>
+                        </p>
+                        <ul className="list-disc list-outside pl-5 space-y-1.5">
                           {note.adjustments.map((item, i) => (
                             <li key={i} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
                           ))}
@@ -157,8 +180,11 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
                     )}
                     {note.bugFixes.length > 0 && (
                       <div>
-                        <p className="font-semibold text-base text-gray-700 mt-4">Fehlerbehebungen:</p>
-                        <ul className="list-disc list-outside pl-5 space-y-1">
+                        <p className="font-bold text-lg text-gray-900 dark:text-gray-100 mt-5 mb-2 flex items-center gap-2">
+                          <Bug size={18} className="text-rose-500 flex-shrink-0" />
+                          <span>Fehlerbehebungen:</span>
+                        </p>
+                        <ul className="list-disc list-outside pl-5 space-y-1.5">
                           {note.bugFixes.map((item, i) => (
                             <li key={i} className="pl-1" dangerouslySetInnerHTML={{ __html: item }}></li>
                           ))}
@@ -169,7 +195,9 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
                 </div>
               ))}
             </div>
-            <div className="flex justify-center mt-6">
+
+            {/* Feste Buttons unten am Rand (scrollen nicht mit!) */}
+            <div className="flex justify-center p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-10">
               <button
                 onClick={() => setShowHistory(false)}
                 className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-2 px-6 rounded-xl shadow transition duration-200 mr-4"
@@ -183,15 +211,12 @@ const NewVersionPopup = ({ version, onClose, releaseNotes }) => {
                 Schließen
               </button>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>,
     document.body
   );
 };
-
-
-
 
 export default NewVersionPopup;
